@@ -3,7 +3,7 @@ import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
 import { buildContext } from "./context"
-import { appendMessage, getRecentMessages } from "./db"
+import { appendMessage, getRecentMessages, getKv, setKv } from "./db"
 import type { DiscordChannel } from "./discord"
 import type { Signal, ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
@@ -15,6 +15,8 @@ export function computeStartDelay(lastTickMs: number | null, intervalMs: number)
   return intervalMs - elapsed
 }
 
+const LAST_TICK_KEY = "heartbeat_last_tick_at"
+
 type HeartbeatAgentOpts = {
   discord: DiscordChannel
   statusBoard: ReturnType<typeof createStatusBoard>
@@ -22,14 +24,13 @@ type HeartbeatAgentOpts = {
   intervalMs: number
 }
 
-export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
+export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
   const { discord, statusBoard, model, intervalMs } = opts
   let running = false
-  let timer: ReturnType<typeof setInterval>
+  let timerId: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>
 
   async function tick() {
-    if (running) return // skip if already running
-
+    if (running) return
     running = true
     statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
@@ -67,7 +68,6 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         }
       }
 
-      // If the agent produced output, send it to Discord and persist
       if (fullText && !fullText.toLowerCase().includes("[no action needed]")) {
         try {
           const dmId = discord.dmChannelId()
@@ -77,7 +77,6 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         }
       }
 
-      // Persist heartbeat response so both agents share complete history
       if (fullText) {
         const content: ContentBlock[] = [{ type: "text", text: fullText }]
         await appendMessage({
@@ -87,6 +86,8 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
           agent: "heartbeat",
         })
       }
+
+      await setKv(LAST_TICK_KEY, { timestamp: Date.now() })
     } catch (err) {
       console.error("heartbeat agent error:", err)
     } finally {
@@ -95,12 +96,26 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
     }
   }
 
-  timer = setInterval(tick, intervalMs)
+  // Compute start delay from persisted state
+  const stored = await getKv(LAST_TICK_KEY) as { timestamp: number } | null
+  const lastTickMs = stored?.timestamp ?? null
+  const delay = computeStartDelay(lastTickMs, intervalMs)
+
+  if (delay === 0) {
+    tick() // fire immediately (don't await — let it run in background)
+    timerId = setInterval(tick, intervalMs)
+  } else {
+    timerId = setTimeout(() => {
+      tick()
+      timerId = setInterval(tick, intervalMs)
+    }, delay)
+  }
 
   return {
     tick,
     stop() {
-      clearInterval(timer)
+      clearTimeout(timerId as ReturnType<typeof setTimeout>)
+      clearInterval(timerId as ReturnType<typeof setInterval>)
     },
   }
 }
