@@ -12,6 +12,7 @@ export type DiscordChannel = {
 export function createDiscordChannel(opts: {
   token: string
   queue: SignalQueue
+  allowedUsername?: string
 }): DiscordChannel {
   const client = new Client({
     intents: [
@@ -26,6 +27,7 @@ export function createDiscordChannel(opts: {
   client.on("messageCreate", async (message) => {
     if (message.author.bot) return
     if (!message.channel.isDMBased()) return
+    if (opts.allowedUsername && message.author.username !== opts.allowedUsername) return
 
     // Track the DM channel for proactive messaging
     ownerDmChannelId = message.channel.id

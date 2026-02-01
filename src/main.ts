@@ -9,6 +9,7 @@ const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
 const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "glm-4.7"
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS ?? 1800000)
+const DISCORD_ALLOWED_USERNAME = process.env.DISCORD_ALLOWED_USERNAME
 
 async function main() {
   console.log("assistant starting...")
@@ -26,6 +27,7 @@ async function main() {
   const discord = createDiscordChannel({
     token: DISCORD_BOT_TOKEN,
     queue,
+    allowedUsername: DISCORD_ALLOWED_USERNAME,
   })
   await discord.start()
   console.log("discord bot online")
