@@ -1,3 +1,5 @@
+import { join } from "node:path"
+import { mkdir } from "node:fs/promises"
 import { createSignalQueue } from "./queue"
 import { createStatusBoard } from "./status-board"
 import { createDiscordChannel } from "./discord"
@@ -10,6 +12,7 @@ const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant
 const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "glm-4.7"
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS ?? 1800000)
 const DISCORD_ALLOWED_USERNAME = process.env.DISCORD_ALLOWED_USERNAME
+const MEMORIES_DIR = join(import.meta.dir, "../memories")
 
 async function main() {
   console.log("assistant starting...")
@@ -18,6 +21,9 @@ async function main() {
   initDb(DATABASE_URL)
   await ping()
   console.log("database connected")
+
+  // Ensure memories directories exist
+  await mkdir(join(MEMORIES_DIR, "diary"), { recursive: true })
 
   // Create shared primitives
   const queue = createSignalQueue()
@@ -38,6 +44,7 @@ async function main() {
     discord,
     statusBoard,
     model: DEFAULT_MODEL,
+    memoriesDir: MEMORIES_DIR,
   })
   console.log("conversation agent ready")
 
@@ -47,6 +54,7 @@ async function main() {
     statusBoard,
     model: DEFAULT_MODEL,
     intervalMs: HEARTBEAT_INTERVAL_MS,
+    memoriesDir: MEMORIES_DIR,
   })
   console.log(`heartbeat agent ready (interval: ${HEARTBEAT_INTERVAL_MS}ms)`)
 

@@ -14,10 +14,11 @@ type HeartbeatAgentOpts = {
   statusBoard: ReturnType<typeof createStatusBoard>
   model: string
   intervalMs: number
+  memoriesDir: string
 }
 
 export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
-  const { discord, statusBoard, model, intervalMs } = opts
+  const { discord, statusBoard, model, intervalMs, memoriesDir } = opts
   let running = false
   let timer: ReturnType<typeof setInterval>
 
@@ -28,7 +29,7 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
     statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
     try {
-      const memory = await readMemoryFiles("memories")
+      const memory = await readMemoryFiles(memoriesDir)
       const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory })
 
       const providerHarness = createGeneratorHarness()

@@ -15,10 +15,11 @@ type ConversationAgentOpts = {
   discord: DiscordChannel
   statusBoard: ReturnType<typeof createStatusBoard>
   model: string
+  memoriesDir: string
 }
 
 export function startConversationAgent(opts: ConversationAgentOpts) {
-  const { queue, discord, statusBoard, model } = opts
+  const { queue, discord, statusBoard, model, memoriesDir } = opts
   let running = false
 
   async function runOnce() {
@@ -49,7 +50,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       }
 
       // Build context
-      const memory = await readMemoryFiles("memories")
+      const memory = await readMemoryFiles(memoriesDir)
       const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory })
 
       // Create harness and run agent
