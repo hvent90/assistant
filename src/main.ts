@@ -27,7 +27,7 @@ async function main() {
 
   // Create shared primitives
   const queue = createSignalQueue()
-  const statusBoard = createStatusBoard()
+  const statusBoard = await createStatusBoard()
 
   // Start Discord bot (listens for DMs)
   const discord = createDiscordChannel({

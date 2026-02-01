@@ -21,3 +21,9 @@ export type StatusBoard = {
   conversation: AgentStatus
   heartbeat: AgentStatus
 }
+
+export type StatusBoardInstance = {
+  get(): StatusBoard
+  update(agent: keyof StatusBoard, status: AgentStatus): Promise<void>
+  format(): string
+}

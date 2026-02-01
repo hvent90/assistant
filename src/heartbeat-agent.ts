@@ -6,8 +6,7 @@ import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "./memory"
 import { appendMessage, getKv, setKv } from "./db"
 import type { DiscordChannel } from "./discord"
-import type { ContentBlock } from "./types"
-import type { createStatusBoard } from "./status-board"
+import type { ContentBlock, StatusBoardInstance } from "./types"
 
 export function computeStartDelay(lastTickMs: number | null, intervalMs: number, nowMs: number = Date.now()): number {
   if (lastTickMs === null) return 0
@@ -20,7 +19,7 @@ const LAST_TICK_KEY = "heartbeat_last_tick_at"
 
 type HeartbeatAgentOpts = {
   discord: DiscordChannel
-  statusBoard: ReturnType<typeof createStatusBoard>
+  statusBoard: StatusBoardInstance
   model: string
   intervalMs: number
   memoriesDir: string
@@ -34,7 +33,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
   async function tick() {
     if (running) return
     running = true
-    statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
+    await statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
     try {
       const memory = await readMemoryFiles(memoriesDir)
@@ -87,7 +86,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
       console.error("heartbeat agent error:", err)
     } finally {
       running = false
-      statusBoard.update("heartbeat", { status: "idle", detail: null })
+      await statusBoard.update("heartbeat", { status: "idle", detail: null })
     }
   }
 

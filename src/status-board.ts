@@ -1,10 +1,15 @@
-import type { AgentStatus, StatusBoard } from "./types"
+import { setKv } from "./db"
+import type { AgentStatus, StatusBoard, StatusBoardInstance } from "./types"
 
-export function createStatusBoard() {
+const STATUS_BOARD_KEY = "status_board"
+
+export async function createStatusBoard(): Promise<StatusBoardInstance> {
   const state: StatusBoard = {
     conversation: { status: "idle", detail: null },
     heartbeat: { status: "idle", detail: null },
   }
+
+  await setKv(STATUS_BOARD_KEY, state)
 
   return {
     get(): StatusBoard {
@@ -13,8 +18,9 @@ export function createStatusBoard() {
         heartbeat: { ...state.heartbeat },
       }
     },
-    update(agent: keyof StatusBoard, status: AgentStatus) {
+    async update(agent: keyof StatusBoard, status: AgentStatus) {
       state[agent] = status
+      await setKv(STATUS_BOARD_KEY, state)
     },
     format(): string {
       const lines: string[] = []

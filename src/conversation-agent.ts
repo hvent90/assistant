@@ -7,13 +7,12 @@ import { readMemoryFiles } from "./memory"
 import { appendMessage, getRecentMessages } from "./db"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
-import type { ContentBlock } from "./types"
-import type { createStatusBoard } from "./status-board"
+import type { ContentBlock, StatusBoardInstance } from "./types"
 
 type ConversationAgentOpts = {
   queue: SignalQueue
   discord: DiscordChannel
-  statusBoard: ReturnType<typeof createStatusBoard>
+  statusBoard: StatusBoardInstance
   model: string
   memoriesDir: string
 }
@@ -27,7 +26,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
     if (signals.length === 0) return
 
     running = true
-    statusBoard.update("conversation", { status: "running", detail: "responding to user" })
+    await statusBoard.update("conversation", { status: "running", detail: "responding to user" })
 
     try {
       // Determine which channel to respond to
@@ -97,7 +96,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       console.error("conversation agent error:", err)
     } finally {
       running = false
-      statusBoard.update("conversation", { status: "idle", detail: null })
+      await statusBoard.update("conversation", { status: "idle", detail: null })
       // Re-check: messages may have arrived while we were running.
       // Safe in single-threaded event loop — drain() runs synchronously
       // before yielding, so no concurrent runOnce() invocations are possible.
