@@ -50,7 +50,7 @@ export async function getKv(key: string): Promise<unknown | null> {
 
 export async function setKv(key: string, value: unknown): Promise<void> {
   await getPool().query(
-    "INSERT INTO kv (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
+    "INSERT INTO kv (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
     [key, JSON.stringify(value)]
   )
 }

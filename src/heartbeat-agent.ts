@@ -8,9 +8,9 @@ import type { DiscordChannel } from "./discord"
 import type { Signal, ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
 
-export function computeStartDelay(lastTickMs: number | null, intervalMs: number): number {
+export function computeStartDelay(lastTickMs: number | null, intervalMs: number, nowMs: number = Date.now()): number {
   if (lastTickMs === null) return 0
-  const elapsed = Date.now() - lastTickMs
+  const elapsed = nowMs - lastTickMs
   if (elapsed >= intervalMs) return 0
   return intervalMs - elapsed
 }
