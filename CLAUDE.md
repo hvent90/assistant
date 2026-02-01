@@ -4,13 +4,14 @@ Background AI assistant that runs autonomously, responds to user messages via Di
 
 ## Tech Stack
 
-| Tool       | Purpose                          |
-| ---------- | -------------------------------- |
-| Bun        | Runtime & package manager        |
-| discord.js | Discord bot integration          |
-| llm-gateway| Agent harness, orchestrator, tools |
+| Tool       | Purpose                            |
+| ---------- | ---------------------------------- |
+| Bun        | Runtime & package manager          |
+| discord.js | Discord bot integration (DMs)      |
+| llm-gateway| Agent harness, orchestrator, tools  |
+| OpenCode Zen | LLM provider (default: glm-4.7) |
 | PostgreSQL | Conversation history, structured data |
-| pm2        | Process management               |
+| pm2        | Process management                 |
 
 ## Development Principles
 

@@ -8,7 +8,10 @@ export function createStatusBoard() {
 
   return {
     get(): StatusBoard {
-      return { ...state }
+      return {
+        conversation: { ...state.conversation },
+        heartbeat: { ...state.heartbeat },
+      }
     },
     update(agent: keyof StatusBoard, status: AgentStatus) {
       state[agent] = status

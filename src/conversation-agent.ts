@@ -1,6 +1,6 @@
 import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
-import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/anthropic"
+import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
 import { buildContext } from "./context"
 import { appendMessage, getRecentMessages } from "./db"
@@ -31,6 +31,9 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       // Determine which channel to respond to
       const channelId = signals.find((s) => s.channelId)?.channelId
 
+      // Fetch history BEFORE persisting new messages to avoid duplication
+      const history = await getRecentMessages(50)
+
       // Persist inbound messages
       for (const sig of signals) {
         if (sig.content) {
@@ -45,7 +48,6 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       }
 
       // Build context
-      const history = await getRecentMessages(50)
       const messages = buildContext({ signals, history, statusBoard: statusBoard.get() })
 
       // Create harness and run agent
@@ -62,7 +64,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
         },
       })
 
-      // Collect assistant response and stream to Discord
+      // Collect assistant response
       let fullText = ""
       for await (const { event } of orchestrator.events()) {
         if (event.type === "text") {
@@ -93,12 +95,9 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
     } finally {
       running = false
       statusBoard.update("conversation", { status: "idle", detail: null })
-
       // Re-check: messages may have arrived while we were running.
-      // The onSignal callback skips when running is true, so those signals
-      // sit in the queue unprocessed. Calling runOnce() here drains them.
-      // runOnce() bails immediately if the queue is empty, so this is a no-op
-      // in the common case. Not awaited to avoid unbounded stack growth.
+      // Safe in single-threaded event loop — drain() runs synchronously
+      // before yielding, so no concurrent runOnce() invocations are possible.
       runOnce()
     }
   }

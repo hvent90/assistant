@@ -3,29 +3,28 @@ import { createStatusBoard } from "./status-board"
 import { createDiscordChannel } from "./discord"
 import { startConversationAgent } from "./conversation-agent"
 import { startHeartbeatAgent } from "./heartbeat-agent"
-import { initDb, shutdown as shutdownDb } from "./db"
+import { initDb, ping, shutdown as shutdownDb } from "./db"
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!
-const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID!
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
-const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "claude-sonnet-4-20250514"
+const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "glm-4.7"
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS ?? 1800000)
 
 async function main() {
   console.log("assistant starting...")
 
-  // Initialize DB
+  // Initialize and verify DB connection
   initDb(DATABASE_URL)
+  await ping()
   console.log("database connected")
 
   // Create shared primitives
   const queue = createSignalQueue()
   const statusBoard = createStatusBoard()
 
-  // Start Discord bot
+  // Start Discord bot (listens for DMs)
   const discord = createDiscordChannel({
     token: DISCORD_BOT_TOKEN,
-    allowedChannelIds: [DISCORD_CHANNEL_ID],
     queue,
   })
   await discord.start()
@@ -46,7 +45,6 @@ async function main() {
     statusBoard,
     model: DEFAULT_MODEL,
     intervalMs: HEARTBEAT_INTERVAL_MS,
-    defaultChannelId: DISCORD_CHANNEL_ID,
   })
   console.log(`heartbeat agent ready (interval: ${HEARTBEAT_INTERVAL_MS}ms)`)
 

@@ -1,11 +1,11 @@
 import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
-import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/anthropic"
+import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
 import { buildContext } from "./context"
-import { getRecentMessages } from "./db"
+import { appendMessage, getRecentMessages } from "./db"
 import type { DiscordChannel } from "./discord"
-import type { Signal } from "./types"
+import type { Signal, ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
 
 type HeartbeatAgentOpts = {
@@ -13,11 +13,10 @@ type HeartbeatAgentOpts = {
   statusBoard: ReturnType<typeof createStatusBoard>
   model: string
   intervalMs: number
-  defaultChannelId: string
 }
 
 export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
-  const { discord, statusBoard, model, intervalMs, defaultChannelId } = opts
+  const { discord, statusBoard, model, intervalMs } = opts
   let running = false
   let timer: ReturnType<typeof setInterval>
 
@@ -61,9 +60,25 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         }
       }
 
-      // If the agent produced output, send it to Discord
+      // If the agent produced output, send it to Discord and persist
       if (fullText && !fullText.toLowerCase().includes("[no action needed]")) {
-        await discord.send(defaultChannelId, fullText)
+        try {
+          const dmId = discord.dmChannelId()
+          await discord.send(dmId, fullText)
+        } catch {
+          // No DM channel yet — user hasn't messaged the bot. Skip sending.
+        }
+      }
+
+      // Persist heartbeat response so both agents share complete history
+      if (fullText) {
+        const content: ContentBlock[] = [{ type: "text", text: fullText }]
+        await appendMessage({
+          role: "assistant",
+          content,
+          source: "heartbeat",
+          agent: "heartbeat",
+        })
       }
     } catch (err) {
       console.error("heartbeat agent error:", err)
