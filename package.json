@@ -1,0 +1,19 @@
+{
+  "name": "assistant",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/main.ts",
+    "start": "bun run src/main.ts",
+    "pm2:start": "bunx pm2 start ecosystem.config.cjs",
+    "pm2:stop": "bunx pm2 stop all",
+    "pm2:restart": "bunx pm2 restart all",
+    "pm2:logs": "bunx pm2 logs",
+    "pm2:status": "bunx pm2 status"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "llm-gateway": "file:../llm-gateway"
+  }
+}
