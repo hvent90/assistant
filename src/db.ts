@@ -43,6 +43,18 @@ export async function getRecentMessages(limit: number = 50): Promise<Array<{
   return result.rows.reverse()
 }
 
+export async function getKv(key: string): Promise<unknown | null> {
+  const result = await getPool().query("SELECT value FROM kv WHERE key = $1", [key])
+  return result.rows[0]?.value ?? null
+}
+
+export async function setKv(key: string, value: unknown): Promise<void> {
+  await getPool().query(
+    "INSERT INTO kv (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
+    [key, JSON.stringify(value)]
+  )
+}
+
 export async function shutdown() {
   await pool?.end()
   pool = null
