@@ -2,10 +2,11 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
-import { buildContext } from "./context"
-import { appendMessage, getRecentMessages } from "./db"
+import { buildHeartbeatContext } from "./context"
+import { readMemoryFiles } from "./memory"
+import { appendMessage } from "./db"
 import type { DiscordChannel } from "./discord"
-import type { Signal, ContentBlock } from "./types"
+import type { ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
 
 type HeartbeatAgentOpts = {
@@ -27,15 +28,8 @@ export function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
     statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
     try {
-      const signal: Signal = {
-        type: "heartbeat",
-        source: "cron",
-        content: null,
-        timestamp: Date.now(),
-      }
-
-      const history = await getRecentMessages(50)
-      const messages = buildContext({ signals: [signal], history, statusBoard: statusBoard.get() })
+      const memory = await readMemoryFiles("memories")
+      const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory })
 
       const providerHarness = createGeneratorHarness()
       const agentHarness = createAgentHarness({ harness: providerHarness })
