@@ -13,7 +13,9 @@
     "pm2:status": "bunx pm2 status"
   },
   "dependencies": {
+    "@types/pg": "^8.16.0",
     "discord.js": "^14.25.1",
-    "llm-gateway": "git+ssh://git@github.com:hvent90/llm-gateway.git"
+    "llm-gateway": "git+ssh://git@github.com:hvent90/llm-gateway.git",
+    "pg": "^8.18.0"
   }
 }
