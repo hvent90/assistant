@@ -1,11 +1,14 @@
 import { Client, GatewayIntentBits, Partials, type DMChannel } from "discord.js"
 import type { SignalQueue } from "./queue"
 import type { ContentBlock } from "./types"
+import { getKv, setKv } from "./db"
+
+const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
 export type DiscordChannel = {
   start(): Promise<void>
   send(channelId: string, text: string): Promise<void>
-  dmChannelId(): string
+  dmChannelId(): Promise<string>
   destroy(): void
 }
 
@@ -23,6 +26,11 @@ export function createDiscordChannel(opts: {
   })
 
   let ownerDmChannelId: string | null = null
+  const loaded = getKv(DM_CHANNEL_KEY).then((v) => {
+    if (v && typeof v === "object" && "channelId" in v) {
+      ownerDmChannelId = (v as { channelId: string }).channelId
+    }
+  }).catch(() => {})
 
   client.on("messageCreate", async (message) => {
     if (message.author.bot) return
@@ -31,6 +39,7 @@ export function createDiscordChannel(opts: {
 
     // Track the DM channel for proactive messaging
     ownerDmChannelId = message.channel.id
+    setKv(DM_CHANNEL_KEY, { channelId: message.channel.id }).catch(() => {})
 
     const content: ContentBlock[] = []
 
@@ -72,7 +81,8 @@ export function createDiscordChannel(opts: {
         await (channel as DMChannel).send(chunk)
       }
     },
-    dmChannelId(): string {
+    async dmChannelId(): Promise<string> {
+      await loaded
       if (!ownerDmChannelId) throw new Error("No DM channel yet — send the bot a message first")
       return ownerDmChannelId
     },

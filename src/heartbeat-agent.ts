@@ -48,7 +48,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         messages,
         tools: [bashTool],
         permissions: {
-          allowlist: [{ tool: "bash", params: { command: "**" } }],
+          allowlist: [{ tool: "bash" }],
         },
       })
 
@@ -64,7 +64,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
 
       if (fullText && !fullText.toLowerCase().includes("[no action needed]")) {
         try {
-          const dmId = discord.dmChannelId()
+          const dmId = await discord.dmChannelId()
           await discord.send(dmId, fullText)
         } catch {
           // No DM channel yet — user hasn't messaged the bot. Skip sending.

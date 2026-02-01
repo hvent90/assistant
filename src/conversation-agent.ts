@@ -62,7 +62,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
         messages,
         tools: [bashTool],
         permissions: {
-          allowlist: [{ tool: "bash", params: { command: "**" } }],
+          allowlist: [{ tool: "bash" }],
         },
       })
 
