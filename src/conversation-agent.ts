@@ -2,7 +2,8 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
-import { buildContext } from "./context"
+import { buildConversationContext } from "./context"
+import { readMemoryFiles } from "./memory"
 import { appendMessage, getRecentMessages } from "./db"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
@@ -14,10 +15,11 @@ type ConversationAgentOpts = {
   discord: DiscordChannel
   statusBoard: ReturnType<typeof createStatusBoard>
   model: string
+  memoriesDir: string
 }
 
 export function startConversationAgent(opts: ConversationAgentOpts) {
-  const { queue, discord, statusBoard, model } = opts
+  const { queue, discord, statusBoard, model, memoriesDir } = opts
   let running = false
 
   async function runOnce() {
@@ -48,7 +50,8 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       }
 
       // Build context
-      const messages = buildContext({ signals, history, statusBoard: statusBoard.get() })
+      const memory = await readMemoryFiles(memoriesDir)
+      const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory })
 
       // Create harness and run agent
       const providerHarness = createGeneratorHarness()

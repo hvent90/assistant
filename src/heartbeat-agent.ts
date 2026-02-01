@@ -2,10 +2,11 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools/bash"
-import { buildContext } from "./context"
-import { appendMessage, getRecentMessages, getKv, setKv } from "./db"
+import { buildHeartbeatContext } from "./context"
+import { readMemoryFiles } from "./memory"
+import { appendMessage, getKv, setKv } from "./db"
 import type { DiscordChannel } from "./discord"
-import type { Signal, ContentBlock } from "./types"
+import type { ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
 
 export function computeStartDelay(lastTickMs: number | null, intervalMs: number, nowMs: number = Date.now()): number {
@@ -22,10 +23,11 @@ type HeartbeatAgentOpts = {
   statusBoard: ReturnType<typeof createStatusBoard>
   model: string
   intervalMs: number
+  memoriesDir: string
 }
 
 export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
-  const { discord, statusBoard, model, intervalMs } = opts
+  const { discord, statusBoard, model, intervalMs, memoriesDir } = opts
   let running = false
   let timerId: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>
 
@@ -35,15 +37,8 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
     statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
     try {
-      const signal: Signal = {
-        type: "heartbeat",
-        source: "cron",
-        content: null,
-        timestamp: Date.now(),
-      }
-
-      const history = await getRecentMessages(50)
-      const messages = buildContext({ signals: [signal], history, statusBoard: statusBoard.get() })
+      const memory = await readMemoryFiles(memoriesDir)
+      const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory })
 
       const providerHarness = createGeneratorHarness()
       const agentHarness = createAgentHarness({ harness: providerHarness })
