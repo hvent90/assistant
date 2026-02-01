@@ -42,7 +42,7 @@ async function main() {
   console.log("conversation agent ready")
 
   // Start heartbeat agent
-  const heartbeat = startHeartbeatAgent({
+  const heartbeat = await startHeartbeatAgent({
     discord,
     statusBoard,
     model: DEFAULT_MODEL,
