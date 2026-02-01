@@ -8,6 +8,13 @@ import type { DiscordChannel } from "./discord"
 import type { Signal, ContentBlock } from "./types"
 import type { createStatusBoard } from "./status-board"
 
+export function computeStartDelay(lastTickMs: number | null, intervalMs: number): number {
+  if (lastTickMs === null) return 0
+  const elapsed = Date.now() - lastTickMs
+  if (elapsed >= intervalMs) return 0
+  return intervalMs - elapsed
+}
+
 type HeartbeatAgentOpts = {
   discord: DiscordChannel
   statusBoard: ReturnType<typeof createStatusBoard>
