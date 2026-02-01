@@ -10,3 +10,8 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
 CREATE INDEX idx_messages_agent ON messages(agent);
+
+CREATE TABLE IF NOT EXISTS kv (
+  key   TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
