@@ -43,7 +43,7 @@ bun run pm2:logs         # Tail pm2 logs
 ## Infrastructure
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d   # Start Postgres
+podman compose -f infra/docker-compose.yml up -d   # Start Postgres
 ```
 
 Postgres runs on port 5434. Connection: `postgres://assistant:assistant@localhost:5434/assistant`

@@ -38,6 +38,7 @@ function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memori
   prompt += `\n- memories/soul.md — Your personality. Update this when you learn something important about yourself.`
   prompt += `\n- memories/user.md — Facts about your user. Update this when you learn something important about them.`
   prompt += `\n- memories/diary/ — Timestamped diary entries (YYYY-MM-DDTHH-MM-SS.md). Write entries to summarize significant events.`
+  prompt += `\n\nThe memories directory may also contain other files — reminders, notes, tasks, or anything else you or a previous run has stored. List the directory contents to discover what's there.`
   prompt += `\n\nRewrite soul.md and user.md in full when updating (they are living documents). Diary entries are append-only (one file per entry, never modify).`
 
   // Inject soul.md
@@ -124,11 +125,11 @@ export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRo
 
   messages.push({
     role: "user",
-    content: `This is a heartbeat signal. Reflect on your current state using your memory files. If you need recent conversation context, query the database via bash.
+    content: `This is a heartbeat signal. Check the contents of your memories directory to understand your current state — look for anything that needs action (reminders, tasks, notes, etc.). If you need recent conversation context, query the database via bash.
 
-Write a diary entry if something significant has happened.
+If anything needs to be communicated to the user — a due reminder, proactive check-in, follow-up, or thought to share — use the speak() tool. Clean up or update files as appropriate after acting on them.
 
-If you have something worth communicating to the user — a proactive check-in, reminder, follow-up, or thought to share — use the speak() tool. Otherwise, just complete your reflection without speaking.`,
+Only write a diary entry if something genuinely significant has happened — a routine, uneventful heartbeat does not need one. Otherwise, just complete silently.`,
   })
 
   return messages
