@@ -1,7 +1,7 @@
 import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
-import { bashTool } from "llm-gateway/packages/ai/tools/bash"
+import { readTool, writeTool } from "./tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "./memory"
 import { appendMessage, getKv, setKv } from "./db"
@@ -46,9 +46,9 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
       orchestrator.spawn({
         model,
         messages,
-        tools: [bashTool],
+        tools: [readTool, writeTool],
         permissions: {
-          allowlist: [{ tool: "bash" }],
+          allowlist: [{ tool: "read" }, { tool: "write" }],
         },
       })
 
