@@ -3,7 +3,7 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools"
-import { readTool, writeTool } from "./tools"
+import { createSpeakTool, readTool, writeTool } from "./tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "./memory"
 import { appendMessage, getKv, setKv } from "./db"
@@ -34,6 +34,8 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
   let running = false
   let timerId: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>
 
+  const speakTool = createSpeakTool(queue)
+
   async function tick() {
     if (running) return
     running = true
@@ -51,9 +53,9 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
       orchestrator.spawn({
         model,
         messages,
-        tools: [bashTool, readTool, writeTool],
+        tools: [bashTool, readTool, writeTool, speakTool],
         permissions: {
-          allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }],
+          allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }, { tool: "speak" }],
         },
       })
 
@@ -64,15 +66,6 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         }
         if (event.type === "error") {
           console.error("heartbeat agent error:", event.error)
-        }
-      }
-
-      if (fullText && !fullText.toLowerCase().includes("[no action needed]")) {
-        try {
-          const dmId = await discord.dmChannelId()
-          await discord.send(dmId, fullText)
-        } catch {
-          // No DM channel yet — user hasn't messaged the bot. Skip sending.
         }
       }
 
