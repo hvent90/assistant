@@ -7,6 +7,7 @@ import { readTool, writeTool } from "./tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "./memory"
 import { appendMessage, getKv, setKv } from "./db"
+import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
 import type { ContentBlock, StatusBoardInstance } from "./types"
 
@@ -20,6 +21,7 @@ export function computeStartDelay(lastTickMs: number | null, intervalMs: number,
 const LAST_TICK_KEY = "heartbeat_last_tick_at"
 
 type HeartbeatAgentOpts = {
+  queue: SignalQueue
   discord: DiscordChannel
   statusBoard: StatusBoardInstance
   model: string
@@ -28,7 +30,7 @@ type HeartbeatAgentOpts = {
 }
 
 export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
-  const { discord, statusBoard, model, intervalMs, memoriesDir } = opts
+  const { queue, discord, statusBoard, model, intervalMs, memoriesDir } = opts
   let running = false
   let timerId: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>
 

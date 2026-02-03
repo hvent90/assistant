@@ -50,6 +50,7 @@ async function main() {
 
   // Start heartbeat agent
   const heartbeat = await startHeartbeatAgent({
+    queue,
     discord,
     statusBoard,
     model: DEFAULT_MODEL,
