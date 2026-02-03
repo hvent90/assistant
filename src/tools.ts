@@ -2,6 +2,7 @@ import { z } from "zod"
 import { readFile, writeFile, mkdir } from "fs/promises"
 import { dirname } from "path"
 import type { ToolDefinition } from "llm-gateway/packages/ai/types"
+import type { SignalQueue } from "./queue"
 
 const readSchema = z.object({
   path: z.string().describe("Absolute path to the file to read"),
@@ -50,4 +51,27 @@ export const writeTool: ToolDefinition<typeof writeSchema, string> = {
       return { context: msg, result: msg }
     }
   },
+}
+
+const speakSchema = z.object({
+  thought: z.string().describe("Your thought process about what to communicate, e.g. 'I noticed the user mentioned a deadline tomorrow, I should check in about that'"),
+})
+
+export function createSpeakTool(queue: SignalQueue): ToolDefinition<typeof speakSchema, string> {
+  return {
+    name: "speak",
+    description: "Communicate something to the user. Use when you have something worth saying — a proactive check-in, reminder, or thought to share. The thought you provide will guide how you formulate your message.",
+    schema: speakSchema,
+    derivePermission: () => ({ tool: "speak", params: {} }),
+    execute: async ({ thought }) => {
+      queue.push({
+        type: "heartbeat",
+        source: "heartbeat",
+        content: [{ type: "text", text: thought }],
+        timestamp: Date.now(),
+      })
+      const msg = `Queued message for user: "${thought.slice(0, 50)}${thought.length > 50 ? "..." : ""}"`
+      return { context: msg, result: msg }
+    },
+  }
 }
