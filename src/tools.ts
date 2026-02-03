@@ -54,13 +54,13 @@ export const writeTool: ToolDefinition<typeof writeSchema, string> = {
 }
 
 const speakSchema = z.object({
-  thought: z.string().describe("Your thought process about what to communicate, e.g. 'I noticed the user mentioned a deadline tomorrow, I should check in about that'"),
+  thought: z.string().describe("What to communicate and why, with all relevant details. Example: 'The user set a reminder to call their dentist at 2pm — it's now 2pm, time to remind them.'"),
 })
 
 export function createSpeakTool(queue: SignalQueue): ToolDefinition<typeof speakSchema, string> {
   return {
     name: "speak",
-    description: "Communicate something to the user. Use when you have something worth saying — a proactive check-in, reminder, or thought to share. The thought you provide will guide how you formulate your message.",
+    description: "Queue a message for the user. Your thought is passed to the conversation agent, which delivers it. Include all relevant details — the conversation agent only knows what you tell it here.",
     schema: speakSchema,
     derivePermission: () => ({ tool: "speak", params: {} }),
     execute: async ({ thought }) => {
