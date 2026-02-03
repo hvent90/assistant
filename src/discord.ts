@@ -28,13 +28,7 @@ function renderViewContent(content: ViewContent): string {
       return `> *${content.text.split("\n").join("\n> ")}*`
     case "tool_call": {
       const input = typeof content.input === "string" ? content.input : JSON.stringify(content.input)
-      let result = `\`\`\`\n${content.name}: ${truncate(input, 100)}`
-      if (content.output !== undefined) {
-        const output = typeof content.output === "string" ? content.output : JSON.stringify(content.output)
-        result += `\n${truncate(output, 500)}`
-      }
-      result += `\n\`\`\``
-      return result
+      return `\`\`\`\n${content.name}: ${input}\n\`\`\``
     }
     case "error":
       return `**Error:** ${content.message}`
@@ -59,10 +53,6 @@ function renderViewNodes(nodes: ViewNode[]): string {
     }
   }
   return parts.join("\n")
-}
-
-function truncate(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max) + "..." : str
 }
 
 function extractFinalText(nodes: ViewNode[]): string {
@@ -174,10 +164,18 @@ export function createDiscordChannel(opts: {
         if (!pendingRender) return
         const content = pendingRender
         pendingRender = null
-        if (!msg) {
-          msg = await (channel as DMChannel).send(content)
-        } else {
-          await msg.edit(content).catch(console.error)
+        const chunks = splitMessage(content, 1500)
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i]!
+          if (i === 0) {
+            if (!msg) {
+              msg = await (channel as DMChannel).send(chunk)
+            } else {
+              await msg.edit(chunk).catch(console.error)
+            }
+          } else {
+            await (channel as DMChannel).send(chunk)
+          }
         }
       }
 
@@ -209,13 +207,13 @@ export function createDiscordChannel(opts: {
         if (!shouldUpdate) continue
 
         const viewNodes = projectThread(graph)
-        const rendered = truncate(renderViewNodes(viewNodes), 1900)
+        const rendered = renderViewNodes(viewNodes)
         if (rendered) scheduleUpdate(rendered)
       }
 
       // Final update - flush immediately with complete content
       const viewNodes = projectThread(graph)
-      const finalRendered = truncate(renderViewNodes(viewNodes), 1900)
+      const finalRendered = renderViewNodes(viewNodes)
       if (finalRendered) {
         pendingRender = finalRendered
         await flushUpdate()
