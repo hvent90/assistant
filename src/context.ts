@@ -71,17 +71,38 @@ export function buildConversationContext({ signals, history, statusBoard, memory
     }
   }
 
-  // Trigger payload
-  const parts: string[] = []
+  // Process signals by type
+  const userParts: string[] = []
+  const heartbeatParts: string[] = []
+
   for (const sig of signals) {
     if (sig.content) {
       for (const block of sig.content) {
-        if (block.type === "text") parts.push(block.text)
+        if (block.type === "text") {
+          if (sig.type === "heartbeat") {
+            heartbeatParts.push(block.text)
+          } else {
+            userParts.push(block.text)
+          }
+        }
       }
     }
   }
-  if (parts.length > 0) {
-    messages.push({ role: "user", content: `[${new Date().toISOString()}]\n${parts.join("\n")}` })
+
+  // User messages first
+  if (userParts.length > 0) {
+    messages.push({
+      role: "user",
+      content: `[${new Date().toISOString()}]\n${userParts.join("\n")}`,
+    })
+  }
+
+  // Heartbeat thought last (as assistant's own prior reasoning)
+  if (heartbeatParts.length > 0) {
+    messages.push({
+      role: "assistant",
+      content: heartbeatParts.join("\n"),
+    })
   }
 
   // Current state
