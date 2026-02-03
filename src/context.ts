@@ -97,7 +97,11 @@ export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRo
 
   messages.push({
     role: "user",
-    content: "This is a heartbeat signal. Reflect on your current state using your memory files. If you need recent conversation context, query the database via bash. Write a diary entry if something significant has happened. Is there anything you should proactively do for the user? If not, respond with [no action needed].",
+    content: `This is a heartbeat signal. Reflect on your current state using your memory files. If you need recent conversation context, query the database via bash.
+
+Write a diary entry if something significant has happened.
+
+If you have something worth communicating to the user — a proactive check-in, reminder, follow-up, or thought to share — use the speak() tool. Otherwise, just complete your reflection without speaking.`,
   })
 
   return messages
