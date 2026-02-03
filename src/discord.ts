@@ -163,6 +163,29 @@ export function createDiscordChannel(opts: {
       let graph: Graph = createGraph()
       let msg: Message | null = null
       let hasUnsentReasoning = false
+      let pendingRender: string | null = null
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+      const flushUpdate = async () => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer)
+          debounceTimer = null
+        }
+        if (!pendingRender) return
+        const content = pendingRender
+        pendingRender = null
+        if (!msg) {
+          msg = await (channel as DMChannel).send(content)
+        } else {
+          await msg.edit(content).catch(console.error)
+        }
+      }
+
+      const scheduleUpdate = (rendered: string) => {
+        pendingRender = rendered
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(flushUpdate, 1000)
+      }
 
       for await (const { agentId, event } of events) {
         const graphEvent = toGraphEvent(event, agentId)
@@ -187,19 +210,15 @@ export function createDiscordChannel(opts: {
 
         const viewNodes = projectThread(graph)
         const rendered = truncate(renderViewNodes(viewNodes), 1900)
-
-        if (!msg) {
-          msg = await (channel as DMChannel).send(rendered || "*thinking...*")
-        } else if (rendered) {
-          await msg.edit(rendered).catch(() => {})
-        }
+        if (rendered) scheduleUpdate(rendered)
       }
 
-      // Final update with complete content
+      // Final update - flush immediately with complete content
       const viewNodes = projectThread(graph)
       const finalRendered = truncate(renderViewNodes(viewNodes), 1900)
-      if (msg && finalRendered) {
-        await msg.edit(finalRendered).catch(() => {})
+      if (finalRendered) {
+        pendingRender = finalRendered
+        await flushUpdate()
       }
 
       return extractFinalText(viewNodes)
