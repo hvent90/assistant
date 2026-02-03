@@ -27,7 +27,13 @@ function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memori
   prompt += `\n- Memories directory: ${memoriesDir}`
   prompt += `\n- Project root (your source code): ${repoRoot}`
 
+  // Inject instructions.md (core behavioral guidance)
+  if (memory.instructions) {
+    prompt += `\n\n${memory.instructions}`
+  }
+
   // Memory instructions
+  prompt += `\n\n## Persistent Memory`
   prompt += `\n\nYou have persistent memory stored as files in the memories/ directory. You can read and write these files using bash.`
   prompt += `\n- memories/soul.md — Your personality. Update this when you learn something important about yourself.`
   prompt += `\n- memories/user.md — Facts about your user. Update this when you learn something important about them.`
