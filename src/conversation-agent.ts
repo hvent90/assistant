@@ -69,20 +69,20 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
         },
       })
 
-      // Collect assistant response
+      // Stream response to Discord, get final text for persistence
       let fullText = ""
-      for await (const { event } of orchestrator.events()) {
-        if (event.type === "text") {
-          fullText += event.content
+      if (channelId) {
+        fullText = await discord.streamResponse(channelId, orchestrator.events())
+      } else {
+        // No channel - just consume events
+        for await (const { event } of orchestrator.events()) {
+          if (event.type === "text") {
+            fullText += event.content
+          }
+          if (event.type === "error") {
+            console.error("agent error:", event.error)
+          }
         }
-        if (event.type === "error") {
-          console.error("agent error:", event.error)
-        }
-      }
-
-      // Send response to Discord
-      if (fullText && channelId) {
-        await discord.send(channelId, fullText)
       }
 
       // Persist assistant response

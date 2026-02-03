@@ -1,13 +1,88 @@
-import { Client, GatewayIntentBits, Partials, type DMChannel } from "discord.js"
+import { Client, GatewayIntentBits, Partials, type DMChannel, type Message } from "discord.js"
+import { createGraph, reduceEvent, projectThread } from "llm-gateway/packages/ai/client"
+import type { Graph, ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
+import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { SignalQueue } from "./queue"
 import type { ContentBlock } from "./types"
 import { getKv, setKv } from "./db"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
+type OrchestratorEvent = { agentId: string; event: ConsumerHarnessEvent }
+
+// Events that trigger a Discord message update (not streaming deltas)
+const UPDATE_EVENTS = new Set(["harness_start", "harness_end", "tool_call", "tool_result", "error"])
+
+function toGraphEvent(event: ConsumerHarnessEvent, agentId: string) {
+  if (event.type === "error") {
+    return { ...event, type: "error" as const, message: event.error.message, agentId }
+  }
+  return { ...event, agentId }
+}
+
+function renderViewContent(content: ViewContent): string {
+  switch (content.kind) {
+    case "text":
+      return content.text
+    case "reasoning":
+      return `> *${content.text.split("\n").join("\n> ")}*`
+    case "tool_call": {
+      const input = typeof content.input === "string" ? content.input : JSON.stringify(content.input)
+      let result = `\`\`\`\n${content.name}: ${truncate(input, 100)}`
+      if (content.output !== undefined) {
+        const output = typeof content.output === "string" ? content.output : JSON.stringify(content.output)
+        result += `\n${truncate(output, 500)}`
+      }
+      result += `\n\`\`\``
+      return result
+    }
+    case "error":
+      return `**Error:** ${content.message}`
+    case "pending":
+      return "*thinking...*"
+    case "user":
+    case "relay":
+      return ""
+  }
+}
+
+function renderViewNodes(nodes: ViewNode[]): string {
+  const parts: string[] = []
+  for (const node of nodes) {
+    if (node.role === "user") continue
+    const text = renderViewContent(node.content)
+    if (text) parts.push(text)
+    // Render branches (subagent responses nested under tool calls)
+    for (const branch of node.branches) {
+      const branchText = renderViewNodes(branch)
+      if (branchText) parts.push(branchText)
+    }
+  }
+  return parts.join("\n")
+}
+
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + "..." : str
+}
+
+function extractFinalText(nodes: ViewNode[]): string {
+  const parts: string[] = []
+  for (const node of nodes) {
+    if (node.role === "user") continue
+    if (node.content.kind === "text") {
+      parts.push(node.content.text)
+    }
+    for (const branch of node.branches) {
+      parts.push(extractFinalText(branch))
+    }
+  }
+  return parts.join("\n")
+}
+
 export type DiscordChannel = {
   start(): Promise<void>
   send(channelId: string, text: string): Promise<void>
+  streamResponse(channelId: string, events: AsyncIterable<OrchestratorEvent>): Promise<string>
   dmChannelId(): Promise<string>
   destroy(): void
 }
@@ -80,6 +155,54 @@ export function createDiscordChannel(opts: {
       for (const chunk of chunks) {
         await (channel as DMChannel).send(chunk)
       }
+    },
+    async streamResponse(channelId: string, events: AsyncIterable<OrchestratorEvent>): Promise<string> {
+      const channel = await client.channels.fetch(channelId)
+      if (!channel?.isTextBased()) throw new Error("Channel not text-based")
+
+      let graph: Graph = createGraph()
+      let msg: Message | null = null
+      let hasUnsentReasoning = false
+
+      for await (const { agentId, event } of events) {
+        const graphEvent = toGraphEvent(event, agentId)
+        graph = reduceEvent(graph, graphEvent)
+
+        // Track reasoning - send it when text or tool_call arrives
+        if (event.type === "reasoning") {
+          hasUnsentReasoning = true
+          continue
+        }
+
+        // Determine if we should update Discord
+        const shouldUpdate =
+          UPDATE_EVENTS.has(event.type) ||
+          (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call"))
+
+        if (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call")) {
+          hasUnsentReasoning = false
+        }
+
+        if (!shouldUpdate) continue
+
+        const viewNodes = projectThread(graph)
+        const rendered = truncate(renderViewNodes(viewNodes), 1900)
+
+        if (!msg) {
+          msg = await (channel as DMChannel).send(rendered || "*thinking...*")
+        } else if (rendered) {
+          await msg.edit(rendered).catch(() => {})
+        }
+      }
+
+      // Final update with complete content
+      const viewNodes = projectThread(graph)
+      const finalRendered = truncate(renderViewNodes(viewNodes), 1900)
+      if (msg && finalRendered) {
+        await msg.edit(finalRendered).catch(() => {})
+      }
+
+      return extractFinalText(viewNodes)
     },
     async dmChannelId(): Promise<string> {
       await loaded
