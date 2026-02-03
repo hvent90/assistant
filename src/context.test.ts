@@ -10,7 +10,7 @@ describe("buildConversationContext", () => {
   }
   const noMemory: MemoryFiles = { soul: null, user: null }
 
-  test("message signal produces system + history + user message", () => {
+  test("message signal produces system + user message + current-state system message", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hello" }], timestamp: 1 },
     ]
@@ -23,7 +23,12 @@ describe("buildConversationContext", () => {
     })
 
     expect(messages[0]!.role).toBe("system")
-    expect(messages[messages.length - 1]).toEqual({ role: "user", content: "hello" })
+    const userMsg = messages.find((m) => m.role === "user")!
+    expect(userMsg.content).toContain("hello")
+    // Trailing system message with current time
+    const last = messages[messages.length - 1]!
+    expect(last.role).toBe("system")
+    expect(last.content).toContain("Current time:")
   })
 
   test("multiple drained messages become one user turn", () => {
@@ -76,13 +81,14 @@ describe("buildConversationContext", () => {
     expect(system!.content).toContain("User prefers TypeScript.")
   })
 
-  test("includes conversation history", () => {
+  test("includes conversation history with timestamps on user messages", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
     ]
+    const ts = new Date("2025-01-15T10:30:00Z")
     const history = [
-      { role: "user", content: [{ type: "text" as const, text: "earlier message" }] },
-      { role: "assistant", content: [{ type: "text" as const, text: "earlier reply" }] },
+      { role: "user", content: [{ type: "text" as const, text: "earlier message" }], created_at: ts },
+      { role: "assistant", content: [{ type: "text" as const, text: "earlier reply" }], created_at: ts },
     ]
 
     const messages = buildConversationContext({
@@ -92,8 +98,12 @@ describe("buildConversationContext", () => {
       memory: noMemory,
     })
     const texts = messages.map((m) => m.content)
-    expect(texts.some((t) => t.includes("earlier message"))).toBe(true)
-    expect(texts.some((t) => t.includes("earlier reply"))).toBe(true)
+    // User history message should have timestamp prefix
+    const userHistory = texts.find((t) => t.includes("earlier message"))!
+    expect(userHistory).toContain("2025-01-15T10:30:00.000Z")
+    // Assistant message should not have timestamp
+    const assistantHistory = texts.find((t) => t.includes("earlier reply"))!
+    expect(assistantHistory).not.toContain("2025-01-15")
   })
 
   test("status board is included when agents are active", () => {

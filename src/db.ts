@@ -37,7 +37,7 @@ export async function getRecentMessages(limit: number = 50): Promise<Array<{
   created_at: Date
 }>> {
   const result = await getPool().query(
-    `SELECT role, content, source, agent, created_at FROM messages ORDER BY created_at DESC LIMIT $1`,
+    `SELECT role, content, source, agent, created_at FROM messages WHERE role = 'user' OR agent = 'conversation' ORDER BY created_at DESC LIMIT $1`,
     [limit]
   )
   return result.rows.reverse()

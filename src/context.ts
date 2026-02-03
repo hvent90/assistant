@@ -5,7 +5,7 @@ type Message = { role: "system" | "user" | "assistant"; content: string }
 
 type ConversationContextInput = {
   signals: Signal[]
-  history: Array<{ role: string; content: ContentBlock[] }>
+  history: Array<{ role: string; content: ContentBlock[]; created_at: Date }>
   statusBoard: StatusBoard
   memory: MemoryFiles
 }
@@ -57,7 +57,8 @@ export function buildConversationContext({ signals, history, statusBoard, memory
       .map((b) => b.text)
       .join("\n")
     if (text) {
-      messages.push({ role: msg.role as "user" | "assistant", content: text })
+      const content = msg.role === "user" ? `[${msg.created_at.toISOString()}]\n${text}` : text
+      messages.push({ role: msg.role as "user" | "assistant", content })
     }
   }
 
@@ -71,8 +72,11 @@ export function buildConversationContext({ signals, history, statusBoard, memory
     }
   }
   if (parts.length > 0) {
-    messages.push({ role: "user", content: parts.join("\n") })
+    messages.push({ role: "user", content: `[${new Date().toISOString()}]\n${parts.join("\n")}` })
   }
+
+  // Current state
+  messages.push({ role: "system", content: `Current time: ${new Date().toISOString()}` })
 
   return messages
 }
