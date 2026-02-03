@@ -1,3 +1,4 @@
+import { join } from "node:path"
 import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
@@ -38,7 +39,8 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
 
     try {
       const memory = await readMemoryFiles(memoriesDir)
-      const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory })
+      const repoRoot = join(memoriesDir, "..")
+      const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot })
 
       const providerHarness = createGeneratorHarness()
       const agentHarness = createAgentHarness({ harness: providerHarness })

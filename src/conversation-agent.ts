@@ -1,3 +1,4 @@
+import { join } from "node:path"
 import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
@@ -51,7 +52,8 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
 
       // Build context
       const memory = await readMemoryFiles(memoriesDir)
-      const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory })
+      const repoRoot = join(memoriesDir, "..")
+      const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot })
 
       // Create harness and run agent
       const providerHarness = createGeneratorHarness()

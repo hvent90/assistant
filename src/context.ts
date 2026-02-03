@@ -8,15 +8,24 @@ type ConversationContextInput = {
   history: Array<{ role: string; content: ContentBlock[]; created_at: Date }>
   statusBoard: StatusBoard
   memory: MemoryFiles
+  memoriesDir: string
+  repoRoot: string
 }
 
 type HeartbeatContextInput = {
   statusBoard: StatusBoard
   memory: MemoryFiles
+  memoriesDir: string
+  repoRoot: string
 }
 
-function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles): string {
+function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string): string {
   let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.`
+
+  // Paths
+  prompt += `\n\n## Paths`
+  prompt += `\n- Memories directory: ${memoriesDir}`
+  prompt += `\n- Project root (your source code): ${repoRoot}`
 
   // Memory instructions
   prompt += `\n\nYou have persistent memory stored as files in the memories/ directory. You can read and write these files using bash.`
@@ -45,10 +54,10 @@ function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles): strin
   return prompt
 }
 
-export function buildConversationContext({ signals, history, statusBoard, memory }: ConversationContextInput): Message[] {
+export function buildConversationContext({ signals, history, statusBoard, memory, memoriesDir, repoRoot }: ConversationContextInput): Message[] {
   const messages: Message[] = []
 
-  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory) })
+  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot) })
 
   // Conversation history
   for (const msg of history) {
@@ -81,10 +90,10 @@ export function buildConversationContext({ signals, history, statusBoard, memory
   return messages
 }
 
-export function buildHeartbeatContext({ statusBoard, memory }: HeartbeatContextInput): Message[] {
+export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot }: HeartbeatContextInput): Message[] {
   const messages: Message[] = []
 
-  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory) })
+  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot) })
 
   messages.push({
     role: "user",
