@@ -9,6 +9,8 @@ describe("buildConversationContext", () => {
     heartbeat: { status: "idle", detail: null },
   }
   const noMemory: MemoryFiles = { soul: null, user: null }
+  const testMemoriesDir = "/tmp/memories"
+  const testRepoRoot = "/tmp/repo"
 
   test("message signal produces system + user message + current-state system message", () => {
     const signals: Signal[] = [
@@ -20,6 +22,8 @@ describe("buildConversationContext", () => {
       history: [],
       statusBoard: baseBoard,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
 
     expect(messages[0]!.role).toBe("system")
@@ -42,6 +46,8 @@ describe("buildConversationContext", () => {
       history: [],
       statusBoard: baseBoard,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const userMsgs = messages.filter((m) => m.role === "user")
     expect(userMsgs).toHaveLength(1)
@@ -60,6 +66,8 @@ describe("buildConversationContext", () => {
       history: [],
       statusBoard: baseBoard,
       memory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const system = messages.find((m) => m.role === "system")
     expect(system!.content).toContain("I am a helpful assistant.")
@@ -76,6 +84,8 @@ describe("buildConversationContext", () => {
       history: [],
       statusBoard: baseBoard,
       memory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const system = messages.find((m) => m.role === "system")
     expect(system!.content).toContain("User prefers TypeScript.")
@@ -96,6 +106,8 @@ describe("buildConversationContext", () => {
       history,
       statusBoard: baseBoard,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const texts = messages.map((m) => m.content)
     // User history message should have timestamp prefix
@@ -120,9 +132,65 @@ describe("buildConversationContext", () => {
       history: [],
       statusBoard: board,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const system = messages.find((m) => m.role === "system")
     expect(system!.content).toContain("writing a recipe")
+  })
+
+  test("heartbeat signals become assistant messages", () => {
+    const result = buildConversationContext({
+      signals: [
+        {
+          type: "heartbeat",
+          source: "heartbeat",
+          content: [{ type: "text", text: "I should check in about the deadline" }],
+          timestamp: Date.now(),
+        },
+      ],
+      history: [],
+      statusBoard: baseBoard,
+      memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
+    })
+
+    const assistantMsg = result.find((m) => m.role === "assistant")
+    expect(assistantMsg).toBeDefined()
+    expect(assistantMsg!.content).toContain("I should check in about the deadline")
+  })
+
+  test("user signals before heartbeat signals", () => {
+    const result = buildConversationContext({
+      signals: [
+        {
+          type: "message",
+          source: "discord",
+          content: [{ type: "text", text: "user message" }],
+          timestamp: Date.now(),
+        },
+        {
+          type: "heartbeat",
+          source: "heartbeat",
+          content: [{ type: "text", text: "heartbeat thought" }],
+          timestamp: Date.now(),
+        },
+      ],
+      history: [],
+      statusBoard: baseBoard,
+      memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
+    })
+
+    // Find indices of user and assistant messages (excluding system)
+    const userIdx = result.findIndex((m) => m.role === "user")
+    const assistantIdx = result.findIndex((m) => m.role === "assistant")
+
+    expect(userIdx).toBeGreaterThan(-1)
+    expect(assistantIdx).toBeGreaterThan(-1)
+    expect(userIdx).toBeLessThan(assistantIdx)
   })
 })
 
@@ -132,11 +200,15 @@ describe("buildHeartbeatContext", () => {
     heartbeat: { status: "idle", detail: null },
   }
   const noMemory: MemoryFiles = { soul: null, user: null }
+  const testMemoriesDir = "/tmp/memories"
+  const testRepoRoot = "/tmp/repo"
 
   test("produces system + heartbeat prompt, no history", () => {
     const messages = buildHeartbeatContext({
       statusBoard: baseBoard,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
 
     expect(messages[0]!.role).toBe("system")
@@ -152,6 +224,8 @@ describe("buildHeartbeatContext", () => {
     const messages = buildHeartbeatContext({
       statusBoard: baseBoard,
       memory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const system = messages.find((m) => m.role === "system")
     expect(system!.content).toContain("I am thoughtful.")
@@ -167,6 +241,8 @@ describe("buildHeartbeatContext", () => {
     const messages = buildHeartbeatContext({
       statusBoard: board,
       memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
     })
     const system = messages.find((m) => m.role === "system")
     expect(system!.content).toContain("replying to user")
