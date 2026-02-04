@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test"
 import { buildConversationContext, buildHeartbeatContext } from "./context"
 import type { Signal, StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"
+import { formatLocalTime } from "./format-time"
 
 describe("buildConversationContext", () => {
   const baseBoard: StatusBoard = {
@@ -112,10 +113,10 @@ describe("buildConversationContext", () => {
     const texts = messages.map((m) => m.content)
     // User history message should have timestamp prefix
     const userHistory = texts.find((t) => t.includes("earlier message"))!
-    expect(userHistory).toContain("2025-01-15T10:30:00.000Z")
+    expect(userHistory).toContain(formatLocalTime(ts))
     // Assistant message should not have timestamp
     const assistantHistory = texts.find((t) => t.includes("earlier reply"))!
-    expect(assistantHistory).not.toContain("2025-01-15")
+    expect(assistantHistory).not.toContain(formatLocalTime(ts))
   })
 
   test("status board is included when agents are active", () => {

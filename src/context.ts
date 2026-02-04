@@ -3,6 +3,7 @@ import type { Node } from "llm-gateway/packages/ai/client"
 import type { Message } from "llm-gateway/packages/ai/types"
 import type { MemoryFiles } from "./memory"
 import { nodesToMessages } from "./projection"
+import { formatLocalTime } from "./format-time"
 
 type ConversationContextInput = {
   signals: Signal[]
@@ -72,7 +73,7 @@ export function buildConversationContext({ signals, history, statusBoard, memory
     const projected = nodesToMessages(msg.content)
     for (const m of projected) {
       if (m.role === "user" && typeof m.content === "string") {
-        messages.push({ role: "user", content: `[${msg.created_at.toISOString()}]\n${m.content}` })
+        messages.push({ role: "user", content: `[${formatLocalTime(msg.created_at)}]\n${m.content}` })
       } else {
         messages.push(m)
       }
@@ -101,7 +102,7 @@ export function buildConversationContext({ signals, history, statusBoard, memory
   if (userParts.length > 0) {
     messages.push({
       role: "user",
-      content: `[${new Date().toISOString()}]\n${userParts.join("\n")}`,
+      content: `[${formatLocalTime(new Date())}]\n${userParts.join("\n")}`,
     })
   }
 
@@ -114,7 +115,7 @@ export function buildConversationContext({ signals, history, statusBoard, memory
   }
 
   // Current state
-  messages.push({ role: "system", content: `Current time: ${new Date().toISOString()}` })
+  messages.push({ role: "system", content: `Current time: ${formatLocalTime(new Date())}` })
 
   return messages
 }
