@@ -75,6 +75,18 @@ export async function setKv(key: string, value: unknown): Promise<void> {
   )
 }
 
+const SESSION_KV_KEY = "current_session_id"
+
+export async function ensureCurrentSession(): Promise<number> {
+  const existing = await getKv(SESSION_KV_KEY)
+  if (existing && typeof existing === "object" && "sessionId" in existing) {
+    return (existing as { sessionId: number }).sessionId
+  }
+  const sessionId = await createSession()
+  await setKv(SESSION_KV_KEY, { sessionId })
+  return sessionId
+}
+
 export async function shutdown() {
   await pool?.end()
   pool = null

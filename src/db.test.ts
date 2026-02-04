@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage } from "./db"
+import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage, ensureCurrentSession } from "./db"
 
 const TEST_DB = "postgres://assistant:assistant@localhost:5434/assistant"
 
@@ -93,5 +93,22 @@ describe("sessions", () => {
     const session = await createSession()
     const messages = await getSessionMessages(session)
     expect(messages).toEqual([])
+  })
+})
+
+describe("ensureCurrentSession", () => {
+  test("creates a session if none exists in KV", async () => {
+    // Clear any existing session
+    await setKv("current_session_id", null)
+    const sessionId = await ensureCurrentSession()
+    expect(typeof sessionId).toBe("number")
+    expect(sessionId).toBeGreaterThan(0)
+  })
+
+  test("returns existing session if one exists in KV", async () => {
+    const created = await createSession()
+    await setKv("current_session_id", { sessionId: created })
+    const returned = await ensureCurrentSession()
+    expect(returned).toBe(created)
   })
 })
