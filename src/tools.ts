@@ -3,6 +3,8 @@ import { readFile, writeFile, mkdir } from "fs/promises"
 import { dirname } from "path"
 import type { ToolDefinition } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "./queue"
+import { insertScheduledTask } from "./db"
+import { formatLocalTime } from "./format-time"
 
 const readSchema = z.object({
   path: z.string().describe("Absolute path to the file to read"),
@@ -71,6 +73,30 @@ export function createSpeakTool(queue: SignalQueue): ToolDefinition<typeof speak
         timestamp: Date.now(),
       })
       const msg = `Queued message for user: "${thought.slice(0, 50)}${thought.length > 50 ? "..." : ""}"`
+      return { context: msg, result: msg }
+    },
+  }
+}
+
+const scheduleSchema = z.object({
+  at: z.string().describe("When to fire, e.g. '2026-02-04 3:00 PM', 'tomorrow at 9am', '2026-12-25 9:00 AM'"),
+  prompt: z.string().describe("What the spawned agent should do when it fires. Include all relevant context."),
+})
+
+export function createScheduleTool(): ToolDefinition<typeof scheduleSchema, string> {
+  return {
+    name: "schedule",
+    description: "Schedule a future agent run at a specific time. The agent will be spawned with your prompt as its instruction. Use this for reminders, follow-ups, or any time-sensitive action.",
+    schema: scheduleSchema,
+    derivePermission: () => ({ tool: "schedule", params: {} }),
+    execute: async ({ at, prompt }) => {
+      const fireAt = new Date(at)
+      if (isNaN(fireAt.getTime())) {
+        const msg = `Error: could not parse "${at}" as a date/time.`
+        return { context: msg, result: msg }
+      }
+      const id = await insertScheduledTask(fireAt, prompt)
+      const msg = `Scheduled task #${id} for ${formatLocalTime(fireAt)}: "${prompt.slice(0, 80)}${prompt.length > 80 ? "..." : ""}"`
       return { context: msg, result: msg }
     },
   }
