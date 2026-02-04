@@ -49,20 +49,6 @@ export async function getSessionMessages(sessionId: number): Promise<Array<{
   return result.rows
 }
 
-export async function getRecentMessages(limit: number = 50): Promise<Array<{
-  role: string
-  content: ContentBlock[]
-  source: string
-  agent: string
-  created_at: Date
-}>> {
-  const result = await getPool().query(
-    `SELECT role, content, source, agent, created_at FROM messages WHERE role = 'user' OR agent = 'conversation' ORDER BY created_at DESC LIMIT $1`,
-    [limit]
-  )
-  return result.rows.reverse()
-}
-
 export async function getKv(key: string): Promise<unknown | null> {
   const result = await getPool().query("SELECT value FROM kv WHERE key = $1", [key])
   return result.rows[0]?.value ?? null
