@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { computeStartDelay } from "./heartbeat-agent"
+import { computeStartDelay } from "./agents/heartbeat"
 
 describe("computeStartDelay", () => {
   const intervalMs = 1800000 // 30 min

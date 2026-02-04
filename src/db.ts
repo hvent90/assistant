@@ -73,6 +73,59 @@ export async function ensureCurrentSession(): Promise<number> {
   return sessionId
 }
 
+export type ScheduledTask = {
+  id: number
+  fire_at: Date
+  prompt: string
+  status: string
+  attempts: number
+  max_attempts: number
+  last_error: string | null
+  created_at: Date
+}
+
+export async function insertScheduledTask(fireAt: Date, prompt: string): Promise<number> {
+  const result = await getPool().query(
+    "INSERT INTO scheduled_tasks (fire_at, prompt) VALUES ($1, $2) RETURNING id",
+    [fireAt, prompt]
+  )
+  return result.rows[0].id
+}
+
+export async function getPendingDueTasks(now: Date): Promise<ScheduledTask[]> {
+  const result = await getPool().query(
+    `SELECT * FROM scheduled_tasks
+     WHERE fire_at <= $1
+       AND (status = 'pending' OR (status = 'failed' AND attempts < max_attempts))
+     ORDER BY fire_at ASC`,
+    [now]
+  )
+  return result.rows
+}
+
+export async function updateTaskStatus(
+  id: number,
+  status: "running" | "completed" | "failed" | "cancelled",
+  error?: string
+): Promise<void> {
+  if (status === "running") {
+    await getPool().query(
+      "UPDATE scheduled_tasks SET status = $1, attempts = attempts + 1 WHERE id = $2",
+      [status, id]
+    )
+  } else if (status === "failed") {
+    await getPool().query(
+      "UPDATE scheduled_tasks SET status = $1, last_error = $2 WHERE id = $3",
+      [status, error ?? null, id]
+    )
+  } else {
+    await getPool().query(
+      "UPDATE scheduled_tasks SET status = $1 WHERE id = $2",
+      [status, id]
+    )
+  }
+}
+
 export async function shutdown() {
   await pool?.end()
   pool = null

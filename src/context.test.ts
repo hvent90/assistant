@@ -1,14 +1,16 @@
 import { describe, test, expect } from "bun:test"
-import { buildConversationContext, buildHeartbeatContext } from "./context"
+import { buildConversationContext } from "./agents/conversation/context"
+import { buildHeartbeatContext } from "./agents/heartbeat/context"
 import type { Signal, StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"
+import { formatLocalTime } from "./format-time"
 
 describe("buildConversationContext", () => {
   const baseBoard: StatusBoard = {
     conversation: { status: "idle", detail: null },
     heartbeat: { status: "idle", detail: null },
   }
-  const noMemory: MemoryFiles = { soul: null, user: null }
+  const noMemory: MemoryFiles = { soul: null, user: null, instructions: null }
   const testMemoriesDir = "/tmp/memories"
   const testRepoRoot = "/tmp/repo"
 
@@ -59,7 +61,7 @@ describe("buildConversationContext", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
     ]
-    const memory: MemoryFiles = { soul: "I am a helpful assistant.", user: null }
+    const memory: MemoryFiles = { soul: "I am a helpful assistant.", user: null, instructions: null }
 
     const messages = buildConversationContext({
       signals,
@@ -77,7 +79,7 @@ describe("buildConversationContext", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
     ]
-    const memory: MemoryFiles = { soul: null, user: "User prefers TypeScript." }
+    const memory: MemoryFiles = { soul: null, user: "User prefers TypeScript.", instructions: null }
 
     const messages = buildConversationContext({
       signals,
@@ -112,10 +114,10 @@ describe("buildConversationContext", () => {
     const texts = messages.map((m) => m.content)
     // User history message should have timestamp prefix
     const userHistory = texts.find((t) => t.includes("earlier message"))!
-    expect(userHistory).toContain("2025-01-15T10:30:00.000Z")
+    expect(userHistory).toContain(formatLocalTime(ts))
     // Assistant message should not have timestamp
     const assistantHistory = texts.find((t) => t.includes("earlier reply"))!
-    expect(assistantHistory).not.toContain("2025-01-15")
+    expect(assistantHistory).not.toContain(formatLocalTime(ts))
   })
 
   test("status board is included when agents are active", () => {
@@ -199,7 +201,7 @@ describe("buildHeartbeatContext", () => {
     conversation: { status: "idle", detail: null },
     heartbeat: { status: "idle", detail: null },
   }
-  const noMemory: MemoryFiles = { soul: null, user: null }
+  const noMemory: MemoryFiles = { soul: null, user: null, instructions: null }
   const testMemoriesDir = "/tmp/memories"
   const testRepoRoot = "/tmp/repo"
 
@@ -219,7 +221,7 @@ describe("buildHeartbeatContext", () => {
   })
 
   test("includes memory when files exist", () => {
-    const memory: MemoryFiles = { soul: "I am thoughtful.", user: "User likes coffee." }
+    const memory: MemoryFiles = { soul: "I am thoughtful.", user: "User likes coffee.", instructions: null }
 
     const messages = buildHeartbeatContext({
       statusBoard: baseBoard,
