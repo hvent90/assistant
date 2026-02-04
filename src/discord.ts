@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, type DMChanne
 import { createGraph, projectThread } from "llm-gateway/packages/ai/client"
 import type { Graph, ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
+import type { ContentPart } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "./queue"
 import { getKv, setKv, createSession } from "./db"
 
@@ -85,19 +86,23 @@ export function createDiscordChannel(opts: {
     ownerDmChannelId = message.channel.id
     setKv(DM_CHANNEL_KEY, { channelId: message.channel.id }).catch(() => {})
 
-    const content: Array<Record<string, unknown>> = []
+    const content: ContentPart[] = []
 
     if (message.content) {
       content.push({ type: "text", text: message.content })
     }
 
-    // Handle attachments
     for (const attachment of message.attachments.values()) {
       if (attachment.contentType?.startsWith("image/")) {
-        content.push({ type: "image", path: attachment.url, mimeType: attachment.contentType })
-      } else {
-        content.push({ type: "file", path: attachment.url, filename: attachment.name ?? "file" })
+        const res = await fetch(attachment.url)
+        const buf = Buffer.from(await res.arrayBuffer())
+        content.push({
+          type: "image",
+          mediaType: attachment.contentType,
+          data: buf.toString("base64"),
+        })
       }
+      // Non-image attachments: skip for now
     }
 
     if (content.length === 0) return

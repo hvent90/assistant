@@ -1,11 +1,12 @@
-import type { Signal, StatusBoard, ContentBlock } from "./types"
+import type { Signal, StatusBoard } from "./types"
+import type { Node } from "llm-gateway/packages/ai/client"
 import type { MemoryFiles } from "./memory"
 
 type Message = { role: "system" | "user" | "assistant"; content: string }
 
 type ConversationContextInput = {
   signals: Signal[]
-  history: Array<{ role: string; content: ContentBlock[]; created_at: Date }>
+  history: Array<{ role: string; content: Node[]; created_at: Date }>
   statusBoard: StatusBoard
   memory: MemoryFiles
   memoriesDir: string
@@ -68,10 +69,12 @@ export function buildConversationContext({ signals, history, statusBoard, memory
 
   // Conversation history
   for (const msg of history) {
-    const text = msg.content
-      .filter((b): b is { type: "text"; text: string } => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
+    const textParts: string[] = []
+    for (const n of msg.content) {
+      if (n.kind === "text") textParts.push(n.content)
+      if (n.kind === "user" && typeof n.content === "string") textParts.push(n.content)
+    }
+    const text = textParts.join("\n")
     if (text) {
       const content = msg.role === "user" ? `[${msg.created_at.toISOString()}]\n${text}` : text
       messages.push({ role: msg.role as "user" | "assistant", content })

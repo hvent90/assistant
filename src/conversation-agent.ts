@@ -10,6 +10,7 @@ import { appendMessage, getSessionMessages, ensureCurrentSession } from "./db"
 import { collectAgentOutput } from "./collect"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
+import type { Node } from "llm-gateway/packages/ai/client"
 import type { StatusBoardInstance } from "./types"
 
 type ConversationAgentOpts = {
@@ -42,9 +43,17 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       // Persist inbound messages
       for (const sig of signals) {
         if (sig.content) {
+          const userNode: Node = {
+            id: `user-${Date.now()}`,
+            runId: `signal-${sig.timestamp}`,
+            kind: "user" as const,
+            content: sig.content.length === 1 && sig.content[0]!.type === "text"
+              ? sig.content[0]!.text
+              : sig.content,
+          }
           await appendMessage({
             role: "user",
-            content: sig.content,
+            content: [userNode],
             source: sig.source,
             channelId: sig.channelId,
             agent: "conversation",

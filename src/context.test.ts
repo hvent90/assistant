@@ -97,8 +97,8 @@ describe("buildConversationContext", () => {
     ]
     const ts = new Date("2025-01-15T10:30:00Z")
     const history = [
-      { role: "user", content: [{ type: "text" as const, text: "earlier message" }], created_at: ts },
-      { role: "assistant", content: [{ type: "text" as const, text: "earlier reply" }], created_at: ts },
+      { role: "user", content: [{ id: "u1", runId: "r1", kind: "user" as const, content: "earlier message" }], created_at: ts },
+      { role: "assistant", content: [{ id: "t1", runId: "r1", kind: "text" as const, content: "earlier reply" }], created_at: ts },
     ]
 
     const messages = buildConversationContext({
