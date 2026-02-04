@@ -25,9 +25,11 @@ Background AI assistant that runs autonomously, responds to user messages via Di
 ## Project Structure
 
 - `src/` - Core application code
+  - `src/agents/{name}/` - Agent directories with `index.ts`, `run.ts`, `context.ts`
+  - `src/__test__/` - Tests for shared modules
 - `infra/` - Docker compose, SQL schemas
 - `docs/` - Design docs and implementation plans
-- Tests are co-located with source files (e.g., `foo.test.ts` next to `foo.ts`)
+- Tests live in `__test__/` directories co-located with source (e.g., `src/__test__/db.test.ts`)
 
 ## Commands
 
