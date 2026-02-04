@@ -144,6 +144,7 @@ export function createDiscordChannel(opts: {
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return
     if (interaction.commandName !== "clear") return
+    if (opts.allowedUsername && interaction.user.username !== opts.allowedUsername) return
 
     const sessionId = await createSession()
     await setKv("current_session_id", { sessionId })
