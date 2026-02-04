@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
 CREATE INDEX idx_messages_agent ON messages(agent);
 
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES sessions(id);
+CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
+
 CREATE TABLE IF NOT EXISTS kv (
   key   TEXT PRIMARY KEY,
   value JSONB NOT NULL
