@@ -6,7 +6,7 @@ import { bashTool } from "llm-gateway/packages/ai/tools"
 import { createSpeakTool, readTool, writeTool } from "./tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "./memory"
-import { appendMessage, getKv, setKv } from "./db"
+import { appendMessage, createSession, getKv, setKv } from "./db"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
 import type { ContentBlock, StatusBoardInstance } from "./types"
@@ -42,6 +42,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
     await statusBoard.update("heartbeat", { status: "running", detail: "reflecting on recent activity" })
 
     try {
+      const sessionId = await createSession()
       const memory = await readMemoryFiles(memoriesDir)
       const repoRoot = join(memoriesDir, "..")
       const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot })
@@ -76,6 +77,7 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
           content,
           source: "heartbeat",
           agent: "heartbeat",
+          sessionId,
         })
       }
 
