@@ -10,7 +10,10 @@
     "pm2:stop": "bunx pm2 stop all",
     "pm2:restart": "bunx pm2 restart all",
     "pm2:logs": "bunx pm2 logs",
-    "pm2:status": "bunx pm2 status"
+    "pm2:status": "bunx pm2 status",
+    "viewer:dev": "bunx vite --config clients/heartbeat-viewer/vite.config.ts",
+    "viewer:build": "bunx vite build --config clients/heartbeat-viewer/vite.config.ts",
+    "viewer:serve": "bun run clients/heartbeat-viewer/server.ts"
   },
   "dependencies": {
     "@types/pg": "^8.16.0",
