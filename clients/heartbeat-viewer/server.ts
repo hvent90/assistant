@@ -78,7 +78,11 @@ Bun.serve({
 
     // Serve static files from dist/
     const filePath = url.pathname === "/" ? "/index.html" : url.pathname
-    const file = Bun.file(join(DIST_DIR, filePath))
+    const resolved = join(DIST_DIR, filePath)
+    if (!resolved.startsWith(DIST_DIR)) {
+      return new Response("forbidden", { status: 403 })
+    }
+    const file = Bun.file(resolved)
     if (await file.exists()) {
       return new Response(file)
     }

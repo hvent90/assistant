@@ -25,23 +25,11 @@ function App() {
   const [graph, setGraph] = useState<Graph | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch("/api/sessions")
-      .then((r) => r.json())
-      .then((data: Session[]) => {
-        setSessions(data)
-        if (data.length > 0) {
-          setActiveId(data[0]!.id)
-        }
-      })
-      .catch((err) => setError(err.message))
-  }, [])
-
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
     setGraph(null)
     fetch(`/api/sessions/${id}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: SessionDetail) => {
         setGraph(nodesToGraph(data.nodes))
       })
@@ -49,14 +37,20 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (activeId !== null) {
-      loadSession(activeId)
-    }
-  }, [activeId, loadSession])
+    fetch("/api/sessions")
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((data: Session[]) => {
+        setSessions(data)
+        if (data.length > 0) {
+          loadSession(data[0]!.id)
+        }
+      })
+      .catch((err) => setError(err.message))
+  }, [loadSession])
 
   return (
     <div className="flex h-dvh bg-black text-white">
-      <Sidebar sessions={sessions} activeId={activeId} onSelect={setActiveId} />
+      <Sidebar sessions={sessions} activeId={activeId} onSelect={loadSession} />
       <main className="flex-1 overflow-y-auto p-4">
         {error && (
           <div className="mb-4 border border-neutral-700 p-3 text-sm text-red-400">
