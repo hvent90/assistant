@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { buildConversationContext } from "./context"
+import { buildConversationContext } from "./agents/conversation/context"
 import { buildHeartbeatContext } from "./agents/heartbeat/context"
 import type { Signal, StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"

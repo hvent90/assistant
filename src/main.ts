@@ -3,8 +3,9 @@ import { mkdir } from "node:fs/promises"
 import { createSignalQueue } from "./queue"
 import { createStatusBoard } from "./status-board"
 import { createDiscordChannel } from "./discord"
-import { startConversationAgent } from "./conversation-agent"
-import { startHeartbeatAgent } from "./agents/heartbeat"
+import { startConversationAgent } from "./agents/conversation"
+import { startHeartbeatAgent, spawnHeartbeatRun } from "./agents/heartbeat"
+import { startScheduler } from "./scheduler"
 import { initDb, ping, shutdown as shutdownDb } from "./db"
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!
@@ -58,10 +59,22 @@ async function main() {
   })
   console.log(`heartbeat agent ready (interval: ${HEARTBEAT_INTERVAL_MS}ms)`)
 
+  // Start scheduler for scheduled tasks
+  const scheduler = await startScheduler({
+    onTask: async (task) => {
+      await spawnHeartbeatRun(
+        { queue, statusBoard, model: DEFAULT_MODEL, memoriesDir: MEMORIES_DIR },
+        task.prompt,
+      )
+    },
+  })
+  console.log("scheduler ready (polling every 60s)")
+
   // Graceful shutdown
   process.on("SIGINT", async () => {
     console.log("shutting down...")
     heartbeat.stop()
+    scheduler.stop()
     discord.destroy()
     await shutdownDb()
     process.exit(0)
@@ -70,6 +83,7 @@ async function main() {
   process.on("SIGTERM", async () => {
     console.log("shutting down...")
     heartbeat.stop()
+    scheduler.stop()
     discord.destroy()
     await shutdownDb()
     process.exit(0)
