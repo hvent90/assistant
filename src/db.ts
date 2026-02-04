@@ -22,11 +22,31 @@ export async function appendMessage(msg: {
   source: string
   channelId?: string
   agent?: string
+  sessionId?: number
 }) {
   await getPool().query(
-    `INSERT INTO messages (role, content, source, channel_id, agent) VALUES ($1, $2, $3, $4, $5)`,
-    [msg.role, JSON.stringify(msg.content), msg.source, msg.channelId ?? null, msg.agent ?? "conversation"]
+    `INSERT INTO messages (role, content, source, channel_id, agent, session_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [msg.role, JSON.stringify(msg.content), msg.source, msg.channelId ?? null, msg.agent ?? "conversation", msg.sessionId ?? null]
   )
+}
+
+export async function createSession(): Promise<number> {
+  const result = await getPool().query("INSERT INTO sessions DEFAULT VALUES RETURNING id")
+  return result.rows[0].id
+}
+
+export async function getSessionMessages(sessionId: number): Promise<Array<{
+  role: string
+  content: ContentBlock[]
+  source: string
+  agent: string
+  created_at: Date
+}>> {
+  const result = await getPool().query(
+    `SELECT role, content, source, agent, created_at FROM messages WHERE session_id = $1 ORDER BY created_at ASC`,
+    [sessionId]
+  )
+  return result.rows
 }
 
 export async function getRecentMessages(limit: number = 50): Promise<Array<{
