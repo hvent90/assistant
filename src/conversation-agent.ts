@@ -41,10 +41,11 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       const history = await getSessionMessages(sessionId)
 
       // Persist inbound messages
-      for (const sig of signals) {
+      for (let i = 0; i < signals.length; i++) {
+        const sig = signals[i]!
         if (sig.content) {
           const userNode: Node = {
-            id: `user-${Date.now()}`,
+            id: `user-${sig.timestamp}-${i}`,
             runId: `signal-${sig.timestamp}`,
             kind: "user" as const,
             content: sig.content.length === 1 && sig.content[0]!.type === "text"

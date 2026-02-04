@@ -80,4 +80,20 @@ describe("nodesToMessages", () => {
     expect(msgs[2]).toEqual({ role: "tool", tool_call_id: "tc1", content: "files" })
     expect(msgs[3]).toEqual({ role: "assistant", content: "after" })
   })
+
+  test("user nodes with ContentPart[] preserve structured content", () => {
+    const nodes: Node[] = [
+      { id: "u1", runId: "r1", kind: "user", content: [
+        { type: "text", text: "what is this?" },
+        { type: "image", mediaType: "image/png", data: "base64..." },
+      ]},
+    ]
+    const msgs = nodesToMessages(nodes)
+    expect(msgs).toEqual([
+      { role: "user", content: [
+        { type: "text", text: "what is this?" },
+        { type: "image", mediaType: "image/png", data: "base64..." },
+      ]},
+    ])
+  })
 })
