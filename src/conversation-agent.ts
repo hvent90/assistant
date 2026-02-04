@@ -7,9 +7,10 @@ import { readTool, writeTool } from "./tools"
 import { buildConversationContext } from "./context"
 import { readMemoryFiles } from "./memory"
 import { appendMessage, getSessionMessages, ensureCurrentSession } from "./db"
+import { collectAgentOutput } from "./collect"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
-import type { ContentBlock, StatusBoardInstance } from "./types"
+import type { StatusBoardInstance } from "./types"
 
 type ConversationAgentOpts = {
   queue: SignalQueue
@@ -71,28 +72,23 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
         },
       })
 
-      // Stream response to Discord, get final text for persistence
-      let fullText = ""
-      if (channelId) {
-        fullText = await discord.streamResponse(channelId, orchestrator.events())
-      } else {
-        // No channel - just consume events
-        for await (const { event } of orchestrator.events()) {
-          if (event.type === "text") {
-            fullText += event.content
-          }
-          if (event.type === "error") {
-            console.error("agent error:", event.error)
-          }
-        }
+      // Stream response to Discord while collecting nodes
+      const renderer = channelId ? discord.createStreamRenderer(channelId) : null
+
+      const nodes = await collectAgentOutput(
+        orchestrator.events(),
+        renderer?.onEvent,
+      )
+
+      if (renderer) {
+        await renderer.flush()
       }
 
       // Persist assistant response
-      if (fullText) {
-        const content: ContentBlock[] = [{ type: "text", text: fullText }]
+      if (nodes.length > 0) {
         await appendMessage({
           role: "assistant",
-          content,
+          content: nodes,
           source: "conversation",
           agent: "conversation",
           sessionId,

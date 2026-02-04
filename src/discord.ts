@@ -1,24 +1,14 @@
 import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, type DMChannel, type Message } from "discord.js"
-import { createGraph, reduceEvent, projectThread } from "llm-gateway/packages/ai/client"
+import { createGraph, projectThread } from "llm-gateway/packages/ai/client"
 import type { Graph, ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { SignalQueue } from "./queue"
-import type { ContentBlock } from "./types"
 import { getKv, setKv, createSession } from "./db"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
-type OrchestratorEvent = { agentId: string; event: ConsumerHarnessEvent }
-
 // Events that trigger a Discord message update (not streaming deltas)
 const UPDATE_EVENTS = new Set(["harness_start", "harness_end", "tool_call", "tool_result", "error"])
-
-function toGraphEvent(event: ConsumerHarnessEvent, agentId: string) {
-  if (event.type === "error") {
-    return { ...event, type: "error" as const, message: event.error.message, agentId }
-  }
-  return { ...event, agentId }
-}
 
 function renderViewContent(content: ViewContent): string {
   switch (content.kind) {
@@ -55,24 +45,13 @@ function renderViewNodes(nodes: ViewNode[]): string {
   return parts.join("\n")
 }
 
-function extractFinalText(nodes: ViewNode[]): string {
-  const parts: string[] = []
-  for (const node of nodes) {
-    if (node.role === "user") continue
-    if (node.content.kind === "text") {
-      parts.push(node.content.text)
-    }
-    for (const branch of node.branches) {
-      parts.push(extractFinalText(branch))
-    }
-  }
-  return parts.join("\n")
-}
-
 export type DiscordChannel = {
   start(): Promise<void>
   send(channelId: string, text: string): Promise<void>
-  streamResponse(channelId: string, events: AsyncIterable<OrchestratorEvent>): Promise<string>
+  createStreamRenderer(channelId: string): {
+    onEvent: (event: ConsumerHarnessEvent, graph: Graph) => void
+    flush: () => Promise<void>
+  }
   dmChannelId(): Promise<string>
   destroy(): void
 }
@@ -106,7 +85,7 @@ export function createDiscordChannel(opts: {
     ownerDmChannelId = message.channel.id
     setKv(DM_CHANNEL_KEY, { channelId: message.channel.id }).catch(() => {})
 
-    const content: ContentBlock[] = []
+    const content: Array<Record<string, unknown>> = []
 
     if (message.content) {
       content.push({ type: "text", text: message.content })
@@ -164,15 +143,22 @@ export function createDiscordChannel(opts: {
         await (channel as DMChannel).send(chunk)
       }
     },
-    async streamResponse(channelId: string, events: AsyncIterable<OrchestratorEvent>): Promise<string> {
-      const channel = await client.channels.fetch(channelId)
-      if (!channel?.isTextBased()) throw new Error("Channel not text-based")
-
-      let graph: Graph = createGraph()
+    createStreamRenderer(channelId: string) {
       let msg: Message | null = null
       let hasUnsentReasoning = false
       let pendingRender: string | null = null
       let debounceTimer: ReturnType<typeof setTimeout> | null = null
+      let channelRef: DMChannel | null = null
+      let latestGraph: Graph = createGraph()
+
+      const getChannel = async () => {
+        if (!channelRef) {
+          const ch = await client.channels.fetch(channelId)
+          if (!ch?.isTextBased()) throw new Error("Channel not text-based")
+          channelRef = ch as DMChannel
+        }
+        return channelRef
+      }
 
       const flushUpdate = async () => {
         if (debounceTimer) {
@@ -182,17 +168,18 @@ export function createDiscordChannel(opts: {
         if (!pendingRender) return
         const content = pendingRender
         pendingRender = null
+        const ch = await getChannel()
         const chunks = splitMessage(content, 1500)
         for (let i = 0; i < chunks.length; i++) {
           const chunk = chunks[i]!
           if (i === 0) {
             if (!msg) {
-              msg = await (channel as DMChannel).send(chunk)
+              msg = await ch.send(chunk)
             } else {
               await msg.edit(chunk).catch(console.error)
             }
           } else {
-            await (channel as DMChannel).send(chunk)
+            await ch.send(chunk)
           }
         }
       }
@@ -203,41 +190,38 @@ export function createDiscordChannel(opts: {
         debounceTimer = setTimeout(flushUpdate, 1000)
       }
 
-      for await (const { agentId, event } of events) {
-        const graphEvent = toGraphEvent(event, agentId)
-        graph = reduceEvent(graph, graphEvent)
+      return {
+        onEvent(event: ConsumerHarnessEvent, graph: Graph) {
+          latestGraph = graph
 
-        // Track reasoning - send it when text or tool_call arrives
-        if (event.type === "reasoning") {
-          hasUnsentReasoning = true
-          continue
-        }
+          if (event.type === "reasoning") {
+            hasUnsentReasoning = true
+            return
+          }
 
-        // Determine if we should update Discord
-        const shouldUpdate =
-          UPDATE_EVENTS.has(event.type) ||
-          (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call"))
+          const shouldUpdate =
+            UPDATE_EVENTS.has(event.type) ||
+            (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call"))
 
-        if (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call")) {
-          hasUnsentReasoning = false
-        }
+          if (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call")) {
+            hasUnsentReasoning = false
+          }
 
-        if (!shouldUpdate) continue
+          if (!shouldUpdate) return
 
-        const viewNodes = projectThread(graph)
-        const rendered = renderViewNodes(viewNodes)
-        if (rendered) scheduleUpdate(rendered)
+          const viewNodes = projectThread(graph)
+          const rendered = renderViewNodes(viewNodes)
+          if (rendered) scheduleUpdate(rendered)
+        },
+        async flush() {
+          const viewNodes = projectThread(latestGraph)
+          const finalRendered = renderViewNodes(viewNodes)
+          if (finalRendered) {
+            pendingRender = finalRendered
+            await flushUpdate()
+          }
+        },
       }
-
-      // Final update - flush immediately with complete content
-      const viewNodes = projectThread(graph)
-      const finalRendered = renderViewNodes(viewNodes)
-      if (finalRendered) {
-        pendingRender = finalRendered
-        await flushUpdate()
-      }
-
-      return extractFinalText(viewNodes)
     },
     async dmChannelId(): Promise<string> {
       await loaded
