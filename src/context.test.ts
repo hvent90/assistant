@@ -10,7 +10,7 @@ describe("buildConversationContext", () => {
     conversation: { status: "idle", detail: null },
     heartbeat: { status: "idle", detail: null },
   }
-  const noMemory: MemoryFiles = { soul: null, user: null }
+  const noMemory: MemoryFiles = { soul: null, user: null, instructions: null }
   const testMemoriesDir = "/tmp/memories"
   const testRepoRoot = "/tmp/repo"
 
@@ -61,7 +61,7 @@ describe("buildConversationContext", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
     ]
-    const memory: MemoryFiles = { soul: "I am a helpful assistant.", user: null }
+    const memory: MemoryFiles = { soul: "I am a helpful assistant.", user: null, instructions: null }
 
     const messages = buildConversationContext({
       signals,
@@ -79,7 +79,7 @@ describe("buildConversationContext", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
     ]
-    const memory: MemoryFiles = { soul: null, user: "User prefers TypeScript." }
+    const memory: MemoryFiles = { soul: null, user: "User prefers TypeScript.", instructions: null }
 
     const messages = buildConversationContext({
       signals,
@@ -201,7 +201,7 @@ describe("buildHeartbeatContext", () => {
     conversation: { status: "idle", detail: null },
     heartbeat: { status: "idle", detail: null },
   }
-  const noMemory: MemoryFiles = { soul: null, user: null }
+  const noMemory: MemoryFiles = { soul: null, user: null, instructions: null }
   const testMemoriesDir = "/tmp/memories"
   const testRepoRoot = "/tmp/repo"
 
@@ -221,7 +221,7 @@ describe("buildHeartbeatContext", () => {
   })
 
   test("includes memory when files exist", () => {
-    const memory: MemoryFiles = { soul: "I am thoughtful.", user: "User likes coffee." }
+    const memory: MemoryFiles = { soul: "I am thoughtful.", user: "User likes coffee.", instructions: null }
 
     const messages = buildHeartbeatContext({
       statusBoard: baseBoard,
