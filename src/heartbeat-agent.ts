@@ -9,7 +9,8 @@ import { readMemoryFiles } from "./memory"
 import { appendMessage, createSession, getKv, setKv } from "./db"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
-import type { ContentBlock, StatusBoardInstance } from "./types"
+import { collectAgentOutput } from "./collect"
+import type { StatusBoardInstance } from "./types"
 
 export function computeStartDelay(lastTickMs: number | null, intervalMs: number, nowMs: number = Date.now()): number {
   if (lastTickMs === null) return 0
@@ -60,21 +61,12 @@ export async function startHeartbeatAgent(opts: HeartbeatAgentOpts) {
         },
       })
 
-      let fullText = ""
-      for await (const { event } of orchestrator.events()) {
-        if (event.type === "text") {
-          fullText += event.content
-        }
-        if (event.type === "error") {
-          console.error("heartbeat agent error:", event.error)
-        }
-      }
+      const nodes = await collectAgentOutput(orchestrator.events())
 
-      if (fullText) {
-        const content: ContentBlock[] = [{ type: "text", text: fullText }]
+      if (nodes.length > 0) {
         await appendMessage({
           role: "assistant",
-          content,
+          content: nodes,
           source: "heartbeat",
           agent: "heartbeat",
           sessionId,
