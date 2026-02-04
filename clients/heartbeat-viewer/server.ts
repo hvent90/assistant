@@ -3,7 +3,7 @@ import type { Node } from "llm-gateway/packages/ai/client"
 import { join } from "path"
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
-const PORT = Number(process.env.VIEWER_PORT) || 4001
+const PORT = Number(process.env.VIEWER_PORT) || 5100
 const DIST_DIR = join(import.meta.dir, "dist")
 
 const pool = new Pool({ connectionString: DATABASE_URL })

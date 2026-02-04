@@ -122,7 +122,13 @@ export function createDiscordChannel(opts: {
     const clear = new SlashCommandBuilder()
       .setName("clear")
       .setDescription("Start a new conversation session")
-    await client.application.commands.set([clear])
+      .setDMPermission(true)
+    try {
+      const registered = await client.application.commands.set([clear])
+      console.log(`registered ${registered.size} slash command(s)`)
+    } catch (err) {
+      console.error("failed to register slash commands:", err)
+    }
   })
 
   client.on("interactionCreate", async (interaction) => {
