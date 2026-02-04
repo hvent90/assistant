@@ -22,14 +22,20 @@ export async function appendMessage(msg: {
   source: string
   channelId?: string
   agent?: string
+  sessionId?: number
 }) {
   await getPool().query(
-    `INSERT INTO messages (role, content, source, channel_id, agent) VALUES ($1, $2, $3, $4, $5)`,
-    [msg.role, JSON.stringify(msg.content), msg.source, msg.channelId ?? null, msg.agent ?? "conversation"]
+    `INSERT INTO messages (role, content, source, channel_id, agent, session_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [msg.role, JSON.stringify(msg.content), msg.source, msg.channelId ?? null, msg.agent ?? "conversation", msg.sessionId ?? null]
   )
 }
 
-export async function getRecentMessages(limit: number = 50): Promise<Array<{
+export async function createSession(): Promise<number> {
+  const result = await getPool().query("INSERT INTO sessions DEFAULT VALUES RETURNING id")
+  return result.rows[0].id
+}
+
+export async function getSessionMessages(sessionId: number): Promise<Array<{
   role: string
   content: ContentBlock[]
   source: string
@@ -37,10 +43,10 @@ export async function getRecentMessages(limit: number = 50): Promise<Array<{
   created_at: Date
 }>> {
   const result = await getPool().query(
-    `SELECT role, content, source, agent, created_at FROM messages WHERE role = 'user' OR agent = 'conversation' ORDER BY created_at DESC LIMIT $1`,
-    [limit]
+    `SELECT role, content, source, agent, created_at FROM messages WHERE session_id = $1 ORDER BY created_at ASC`,
+    [sessionId]
   )
-  return result.rows.reverse()
+  return result.rows
 }
 
 export async function getKv(key: string): Promise<unknown | null> {
@@ -53,6 +59,18 @@ export async function setKv(key: string, value: unknown): Promise<void> {
     "INSERT INTO kv (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
     [key, JSON.stringify(value)]
   )
+}
+
+const SESSION_KV_KEY = "current_session_id"
+
+export async function ensureCurrentSession(): Promise<number> {
+  const existing = await getKv(SESSION_KV_KEY)
+  if (existing && typeof existing === "object" && "sessionId" in existing) {
+    return (existing as { sessionId: number }).sessionId
+  }
+  const sessionId = await createSession()
+  await setKv(SESSION_KV_KEY, { sessionId })
+  return sessionId
 }
 
 export async function shutdown() {

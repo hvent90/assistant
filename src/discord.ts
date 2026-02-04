@@ -1,10 +1,10 @@
-import { Client, GatewayIntentBits, Partials, type DMChannel, type Message } from "discord.js"
+import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, type DMChannel, type Message } from "discord.js"
 import { createGraph, reduceEvent, projectThread } from "llm-gateway/packages/ai/client"
 import type { Graph, ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { SignalQueue } from "./queue"
 import type { ContentBlock } from "./types"
-import { getKv, setKv } from "./db"
+import { getKv, setKv, createSession } from "./db"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
@@ -131,6 +131,24 @@ export function createDiscordChannel(opts: {
       metadata: { userId: message.author.id, username: message.author.username },
       timestamp: Date.now(),
     })
+  })
+
+  client.once("ready", async () => {
+    if (!client.application) return
+    const clear = new SlashCommandBuilder()
+      .setName("clear")
+      .setDescription("Start a new conversation session")
+    await client.application.commands.set([clear])
+  })
+
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return
+    if (interaction.commandName !== "clear") return
+    if (opts.allowedUsername && interaction.user.username !== opts.allowedUsername) return
+
+    const sessionId = await createSession()
+    await setKv("current_session_id", { sessionId })
+    await interaction.reply({ content: "Session cleared.", ephemeral: true })
   })
 
   return {
