@@ -1,16 +1,13 @@
+import type { ContentPart } from "llm-gateway/packages/ai/types"
+
 export type Signal = {
   type: "message" | "heartbeat"
   source: string
-  content: ContentBlock[] | null
+  content: ContentPart[] | null
   channelId?: string
   metadata?: Record<string, unknown>
   timestamp: number
 }
-
-export type ContentBlock =
-  | { type: "text"; text: string }
-  | { type: "image"; path: string; mimeType: string }
-  | { type: "file"; path: string; filename: string }
 
 export type AgentStatus = {
   status: "idle" | "running"

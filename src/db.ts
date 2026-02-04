@@ -1,5 +1,5 @@
 import { Pool } from "pg"
-import type { ContentBlock } from "./types"
+import type { Node } from "llm-gateway/packages/ai/client"
 
 let pool: Pool | null = null
 
@@ -18,7 +18,7 @@ export async function ping() {
 
 export async function appendMessage(msg: {
   role: "user" | "assistant"
-  content: ContentBlock[]
+  content: Node[]
   source: string
   channelId?: string
   agent?: string
@@ -37,7 +37,7 @@ export async function createSession(): Promise<number> {
 
 export async function getSessionMessages(sessionId: number): Promise<Array<{
   role: string
-  content: ContentBlock[]
+  content: Node[]
   source: string
   agent: string
   created_at: Date

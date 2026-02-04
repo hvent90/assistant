@@ -50,7 +50,7 @@ describe("sessions", () => {
     const sessionId = await createSession()
     await appendMessage({
       role: "user",
-      content: [{ type: "text", text: "hello session" }],
+      content: [{ id: "u1", runId: "r1", kind: "user" as const, content: "hello session" }],
       source: "test",
       sessionId,
     })
@@ -64,13 +64,13 @@ describe("sessions", () => {
     const session2 = await createSession()
     await appendMessage({
       role: "user",
-      content: [{ type: "text", text: "session 1 msg" }],
+      content: [{ id: "u1", runId: "r1", kind: "user" as const, content: "session 1 msg" }],
       source: "test",
       sessionId: session1,
     })
     await appendMessage({
       role: "user",
-      content: [{ type: "text", text: "session 2 msg" }],
+      content: [{ id: "u2", runId: "r2", kind: "user" as const, content: "session 2 msg" }],
       source: "test",
       sessionId: session2,
     })
@@ -78,14 +78,14 @@ describe("sessions", () => {
     const msgs2 = await getSessionMessages(session2)
     expect(msgs1).toHaveLength(1)
     expect(msgs2).toHaveLength(1)
-    expect(msgs1[0]!.content[0]).toEqual({ type: "text", text: "session 1 msg" })
-    expect(msgs2[0]!.content[0]).toEqual({ type: "text", text: "session 2 msg" })
+    expect(msgs1[0]!.content[0]).toMatchObject({ kind: "user", content: "session 1 msg" })
+    expect(msgs2[0]!.content[0]).toMatchObject({ kind: "user", content: "session 2 msg" })
   })
 
   test("appendMessage without sessionId stores null session_id", async () => {
     await appendMessage({
       role: "assistant",
-      content: [{ type: "text", text: "heartbeat msg" }],
+      content: [{ id: "t1", runId: "r1", kind: "text" as const, content: "heartbeat msg" }],
       source: "heartbeat",
       agent: "heartbeat",
     })
