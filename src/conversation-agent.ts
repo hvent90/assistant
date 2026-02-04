@@ -35,6 +35,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
     try {
       // Determine which channel to respond to
       const channelId = signals.find((s) => s.channelId)?.channelId
+        ?? await discord.dmChannelId().catch(() => undefined as string | undefined)
 
       // Fetch history BEFORE persisting new messages to avoid duplication
       const sessionId = await ensureCurrentSession()
