@@ -6,7 +6,7 @@ import { bashTool } from "llm-gateway/packages/ai/tools"
 import { readTool, writeTool } from "./tools"
 import { buildConversationContext } from "./context"
 import { readMemoryFiles } from "./memory"
-import { appendMessage, getRecentMessages } from "./db"
+import { appendMessage, getSessionMessages, ensureCurrentSession } from "./db"
 import type { SignalQueue } from "./queue"
 import type { DiscordChannel } from "./discord"
 import type { ContentBlock, StatusBoardInstance } from "./types"
@@ -35,7 +35,8 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
       const channelId = signals.find((s) => s.channelId)?.channelId
 
       // Fetch history BEFORE persisting new messages to avoid duplication
-      const history = await getRecentMessages(50)
+      const sessionId = await ensureCurrentSession()
+      const history = await getSessionMessages(sessionId)
 
       // Persist inbound messages
       for (const sig of signals) {
@@ -46,6 +47,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
             source: sig.source,
             channelId: sig.channelId,
             agent: "conversation",
+            sessionId,
           })
         }
       }
@@ -93,6 +95,7 @@ export function startConversationAgent(opts: ConversationAgentOpts) {
           content,
           source: "conversation",
           agent: "conversation",
+          sessionId,
         })
       }
     } catch (err) {
