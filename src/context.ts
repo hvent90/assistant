@@ -14,14 +14,7 @@ type ConversationContextInput = {
   repoRoot: string
 }
 
-type HeartbeatContextInput = {
-  statusBoard: StatusBoard
-  memory: MemoryFiles
-  memoriesDir: string
-  repoRoot: string
-}
-
-function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string): string {
+export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string): string {
   let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.`
 
   // Paths
@@ -116,31 +109,6 @@ export function buildConversationContext({ signals, history, statusBoard, memory
 
   // Current state
   messages.push({ role: "system", content: `Current time: ${formatLocalTime(new Date())}` })
-
-  return messages
-}
-
-export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot }: HeartbeatContextInput): Message[] {
-  const messages: Message[] = []
-
-  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot) })
-
-  messages.push({
-    role: "user",
-    content: `This is a heartbeat signal. You MUST do the following steps using actual tool calls:
-
-1. Run: bash ls ${memoriesDir}
-2. Read any file that looks like a reminder, task, or note (not soul.md, user.md, or instructions.md — those are config)
-3. If any reminder is due or overdue, use speak() to notify the user immediately
-4. Clean up or update files after acting on them
-5. If you need recent conversation context, run: bash psql to query the database
-
-If anything needs to be communicated to the user — a due reminder, proactive check-in, follow-up, or thought to share — use the speak() tool.
-
-Only write a diary entry if something genuinely significant has happened — a routine, uneventful heartbeat does not need one. Otherwise, just complete silently.
-
-IMPORTANT: Do NOT say "no action items" unless you have actually run ls and read the files. Claiming there is nothing to do without checking is a failure.`,
-  })
 
   return messages
 }

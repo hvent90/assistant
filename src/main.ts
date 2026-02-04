@@ -4,7 +4,7 @@ import { createSignalQueue } from "./queue"
 import { createStatusBoard } from "./status-board"
 import { createDiscordChannel } from "./discord"
 import { startConversationAgent } from "./conversation-agent"
-import { startHeartbeatAgent } from "./heartbeat-agent"
+import { startHeartbeatAgent } from "./agents/heartbeat"
 import { initDb, ping, shutdown as shutdownDb } from "./db"
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!
@@ -51,7 +51,6 @@ async function main() {
   // Start heartbeat agent
   const heartbeat = await startHeartbeatAgent({
     queue,
-    discord,
     statusBoard,
     model: DEFAULT_MODEL,
     intervalMs: HEARTBEAT_INTERVAL_MS,

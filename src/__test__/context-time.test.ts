@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test"
-import { buildConversationContext, buildHeartbeatContext } from "../context"
+import { buildConversationContext } from "../context"
+import { buildHeartbeatContext } from "../agents/heartbeat/context"
 import type { StatusBoard } from "../types"
 
 const emptyMemory = { soul: null, user: null, instructions: null }
