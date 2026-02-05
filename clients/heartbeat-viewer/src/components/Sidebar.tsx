@@ -8,6 +8,7 @@ interface SidebarProps {
   sessions: Session[]
   activeId: number | null
   onSelect: (id: number) => void
+  className?: string
 }
 
 function formatDate(iso: string): string {
@@ -17,9 +18,9 @@ function formatDate(iso: string): string {
     d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
-export function Sidebar({ sessions, activeId, onSelect }: SidebarProps) {
+export function Sidebar({ sessions, activeId, onSelect, className = "flex" }: SidebarProps) {
   return (
-    <aside className="flex h-full w-[280px] shrink-0 flex-col border-r border-neutral-800 overflow-y-auto">
+    <aside className={`${className} h-full w-full md:w-[280px] md:shrink-0 flex-col border-r border-neutral-800 overflow-y-auto`}>
       <div className="border-b border-neutral-800 px-4 py-3">
         <h1 className="text-sm font-bold tracking-tight text-neutral-400 uppercase">Heartbeat Sessions</h1>
       </div>

@@ -50,8 +50,19 @@ function App() {
 
   return (
     <div className="flex h-dvh bg-black text-white">
-      <Sidebar sessions={sessions} activeId={activeId} onSelect={loadSession} />
-      <main className="flex-1 overflow-y-auto p-4">
+      <Sidebar
+        sessions={sessions}
+        activeId={activeId}
+        onSelect={loadSession}
+        className={activeId !== null ? "hidden md:flex" : "flex"}
+      />
+      <main className={`flex-1 flex-col overflow-y-auto p-4 ${activeId === null ? "hidden md:flex" : "flex"}`}>
+        <button
+          onClick={() => setActiveId(null)}
+          className="mb-3 text-sm text-neutral-500 hover:text-white md:hidden"
+        >
+          &larr; sessions
+        </button>
         {error && (
           <div className="mb-4 border border-neutral-700 p-3 text-sm text-red-400">
             error: {error}
