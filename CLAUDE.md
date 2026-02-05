@@ -49,3 +49,13 @@ podman compose -f infra/docker-compose.yml up -d   # Start Postgres
 ```
 
 Postgres runs on port 5434. Connection: `postgres://assistant:assistant@localhost:5434/assistant`
+
+Query the database via podman:
+
+```bash
+podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT ..."
+```
+
+## Bash Tool Pitfalls
+
+- Never put newlines in the middle of a command — Bash interprets them as command separators, which silently breaks the command and can hang on interactive subprocesses. Use single-line commands or `\` for continuation.

@@ -22,6 +22,42 @@ export type ConversationRunOpts = {
   memoriesDir: string
 }
 
+export function signalToPersisted(sig: Signal, index: number): {
+  role: "user" | "assistant"
+  content: Node[]
+  source: string
+  channelId?: string
+} {
+  const textContent = sig.content!.length === 1 && sig.content![0]!.type === "text"
+    ? sig.content![0]!.text
+    : sig.content!
+
+  if (sig.type === "heartbeat") {
+    return {
+      role: "assistant",
+      content: [{
+        id: `heartbeat-${sig.timestamp}-${index}`,
+        runId: `signal-${sig.timestamp}`,
+        kind: "text" as const,
+        content: textContent,
+      }],
+      source: sig.source,
+    }
+  }
+
+  return {
+    role: "user",
+    content: [{
+      id: `user-${sig.timestamp}-${index}`,
+      runId: `signal-${sig.timestamp}`,
+      kind: "user" as const,
+      content: textContent,
+    }],
+    source: sig.source,
+    channelId: sig.channelId,
+  }
+}
+
 export async function spawnConversationRun(opts: ConversationRunOpts, signals: Signal[]): Promise<void> {
   const { discord, statusBoard, model, memoriesDir } = opts
 
@@ -36,23 +72,13 @@ export async function spawnConversationRun(opts: ConversationRunOpts, signals: S
     const sessionId = await ensureCurrentSession()
     const history = await getSessionMessages(sessionId)
 
-    // Persist inbound messages
+    // Persist inbound signals
     for (let i = 0; i < signals.length; i++) {
       const sig = signals[i]!
       if (sig.content) {
-        const userNode: Node = {
-          id: `user-${sig.timestamp}-${i}`,
-          runId: `signal-${sig.timestamp}`,
-          kind: "user" as const,
-          content: sig.content.length === 1 && sig.content[0]!.type === "text"
-            ? sig.content[0]!.text
-            : sig.content,
-        }
+        const persisted = signalToPersisted(sig, i)
         await appendMessage({
-          role: "user",
-          content: [userNode],
-          source: sig.source,
-          channelId: sig.channelId,
+          ...persisted,
           agent: "conversation",
           sessionId,
         })
