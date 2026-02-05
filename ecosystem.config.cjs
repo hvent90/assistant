@@ -7,6 +7,7 @@ module.exports = {
       name: 'assistant',
       script: 'bun',
       args: 'run src/main.ts',
+      cwd: __dirname,
       autorestart: true,
       watch: false,
       output: path.join(logsDir, 'assistant-out.log'),
