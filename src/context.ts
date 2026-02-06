@@ -2,7 +2,10 @@ import type { StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"
 
 export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string): string {
-  let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.`
+  let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.
+
+## Output
+Your text output is streamed directly to the user via Discord. To communicate with the user, simply write your message as text — no tool calls or special delivery mechanisms needed.`
 
   // Paths
   prompt += `\n\n## Paths`
