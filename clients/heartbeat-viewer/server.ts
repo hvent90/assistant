@@ -102,6 +102,25 @@ async function handleApi(url: URL): Promise<Response> {
     })
   }
 
+  if (url.pathname === "/api/scheduled-tasks") {
+    const result = await pool.query(
+      `SELECT id, fire_at, prompt, status, attempts, max_attempts, last_error, created_at
+       FROM scheduled_tasks
+       ORDER BY created_at DESC`
+    )
+    const tasks = result.rows.map((r: any) => ({
+      id: r.id,
+      fireAt: r.fire_at.toISOString(),
+      prompt: r.prompt,
+      status: r.status,
+      attempts: r.attempts,
+      maxAttempts: r.max_attempts,
+      lastError: r.last_error,
+      createdAt: r.created_at.toISOString(),
+    }))
+    return Response.json(tasks)
+  }
+
   return Response.json({ error: "not found" }, { status: 404 })
 }
 
