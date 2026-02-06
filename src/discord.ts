@@ -11,27 +11,14 @@ const DM_CHANNEL_KEY = "discord_dm_channel_id"
 // Events that trigger a Discord message update (not streaming deltas)
 const UPDATE_EVENTS = new Set(["harness_start", "harness_end", "tool_call", "tool_result", "error"])
 
-const TOOL_CONTENT_CAP = 200
-
-function truncate(s: string, max: number): string {
-  return s.length <= max ? s : s.slice(0, max) + "…"
-}
-
 function renderViewContent(content: ViewContent): string {
   switch (content.kind) {
     case "text":
       return content.text
     case "reasoning":
       return `> *${content.text.split("\n").join("\n> ")}*`
-    case "tool_call": {
-      const input = typeof content.input === "string" ? content.input : JSON.stringify(content.input)
-      const parts = [truncate(input, TOOL_CONTENT_CAP)]
-      if (content.output != null) {
-        const output = typeof content.output === "string" ? content.output : JSON.stringify(content.output)
-        parts.push(`→ ${truncate(output, TOOL_CONTENT_CAP)}`)
-      }
-      return `\`\`\`\n${content.name}: ${parts.join("\n")}\n\`\`\``
-    }
+    case "tool_call":
+      return `\`${content.name}\``
     case "error":
       return `**Error:** ${content.message}`
     case "pending":
