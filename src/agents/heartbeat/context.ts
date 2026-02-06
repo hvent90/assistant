@@ -22,7 +22,8 @@ export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRo
 2. Read any file that looks like a reminder, task, or note (not soul.md, user.md, or instructions.md — those are config)
 3. If any reminder is due or overdue, use speak() to notify the user immediately
 4. Clean up or update files after acting on them
-5. If you need recent conversation context, run: bash psql to query the database
+5. If you need recent conversation context, query the database. IMPORTANT: The content column is a JSONB array of nodes — always extract only text nodes to avoid pulling in huge tool call data:
+   podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT role, jsonb_path_query_array(content, '$[*] ? (@.type == \"text\").text') AS content, created_at FROM messages WHERE created_at >= NOW() - INTERVAL '12 hours' ORDER BY created_at DESC LIMIT 10"
 
 If anything needs to be communicated to the user — a due reminder, proactive check-in, follow-up, or thought to share — use the speak() tool.
 
