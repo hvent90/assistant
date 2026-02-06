@@ -3,11 +3,13 @@ import { createRoot } from "react-dom/client"
 import { ErrorBoundary } from "./components/ErrorBoundary"
 import { Sidebar } from "./components/Sidebar"
 import { ConversationThread } from "./components/ConversationThread"
+import { ScheduledTasksView } from "./components/ScheduledTasksView"
+import type { ScheduledTask } from "./components/ScheduledTasksView"
 import { nodesToGraph } from "./graph"
 import type { Graph, Node } from "llm-gateway/packages/ai/client"
 import "./index.css"
 
-type Agent = "heartbeat" | "conversation"
+type Agent = "heartbeat" | "conversation" | "scheduled"
 
 interface Session {
   id: number
@@ -24,7 +26,7 @@ interface SessionDetail {
 function parseHash(): { agent: Agent; sessionId: number | null } {
   const hash = window.location.hash.replace(/^#\/?/, "")
   const parts = hash.split("/")
-  const agent: Agent = parts[0] === "conversation" ? "conversation" : "heartbeat"
+  const agent: Agent = parts[0] === "conversation" ? "conversation" : parts[0] === "scheduled" ? "scheduled" : "heartbeat"
   const sessionId = parts[1] ? parseInt(parts[1], 10) : null
   return { agent, sessionId: sessionId && !isNaN(sessionId) ? sessionId : null }
 }
@@ -37,6 +39,7 @@ function App() {
   const [graph, setGraph] = useState<Graph | null>(null)
   const [error, setError] = useState<string | null>(null)
   const suppressHashUpdate = useRef(false)
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([])
 
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
@@ -52,6 +55,13 @@ function App() {
 
   // Fetch sessions when agent changes
   useEffect(() => {
+    if (agent === "scheduled") {
+      fetch("/api/scheduled-tasks")
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+        .then((data: ScheduledTask[]) => setScheduledTasks(data))
+        .catch((err) => setError(err.message))
+      return
+    }
     fetch(`/api/sessions?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: Session[]) => {
@@ -102,6 +112,7 @@ function App() {
   const handleAgentChange = useCallback((newAgent: Agent) => {
     if (newAgent === agent) return
     setSessions([])
+    setScheduledTasks([])
     setActiveId(null)
     setGraph(null)
     setAgent(newAgent)
@@ -122,21 +133,25 @@ function App() {
         onSelect={loadSession}
         agent={agent}
         onAgentChange={handleAgentChange}
-        className={activeId !== null ? "hidden md:flex" : "flex"}
+        className={agent === "scheduled" ? "hidden md:flex" : activeId !== null ? "hidden md:flex" : "flex"}
       />
-      <main className={`flex-1 flex-col overflow-y-auto p-4 ${activeId === null ? "hidden md:flex" : "flex"}`}>
-        <button
-          onClick={handleBack}
-          className="mb-3 text-sm text-neutral-500 hover:text-white md:hidden"
-        >
-          &larr; sessions
-        </button>
+      <main className={`flex-1 flex-col overflow-y-auto p-4 ${agent === "scheduled" ? "flex" : activeId === null ? "hidden md:flex" : "flex"}`}>
+        {agent !== "scheduled" && (
+          <button
+            onClick={handleBack}
+            className="mb-3 text-sm text-neutral-500 hover:text-white md:hidden"
+          >
+            &larr; sessions
+          </button>
+        )}
         {error && (
           <div className="mb-4 border border-neutral-700 p-3 text-sm text-red-400">
             error: {error}
           </div>
         )}
-        {graph ? (
+        {agent === "scheduled" ? (
+          <ScheduledTasksView tasks={scheduledTasks} />
+        ) : graph ? (
           <ConversationThread graph={graph} agent={agent} />
         ) : activeId !== null ? (
           <div className="flex h-full items-center justify-center text-neutral-600">

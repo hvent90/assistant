@@ -4,7 +4,7 @@ interface Session {
   preview: string
 }
 
-type Agent = "heartbeat" | "conversation"
+type Agent = "heartbeat" | "conversation" | "scheduled"
 
 interface SidebarProps {
   sessions: Session[]
@@ -18,6 +18,7 @@ interface SidebarProps {
 const TABS: { key: Agent; label: string }[] = [
   { key: "heartbeat", label: "Heartbeat" },
   { key: "conversation", label: "Conversation" },
+  { key: "scheduled", label: "Scheduled" },
 ]
 
 function formatDate(iso: string): string {
