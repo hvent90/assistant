@@ -58,11 +58,11 @@ export function buildConversationContext({ signals, history, statusBoard, memory
     })
   }
 
-  // Heartbeat thought last (as assistant's own prior reasoning)
+  // Heartbeat thought last — framed so the conversation agent knows what to do with it
   if (heartbeatParts.length > 0) {
     messages.push({
-      role: "assistant",
-      content: heartbeatParts.join("\n"),
+      role: "system",
+      content: `Your background process flagged the following for the user's attention. Read the context and craft an appropriate message to deliver:\n\n${heartbeatParts.join("\n")}`,
     })
   }
 

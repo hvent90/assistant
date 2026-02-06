@@ -51,7 +51,7 @@ describe("heartbeat signal persistence", () => {
 })
 
 describe("heartbeat signal in conversation context", () => {
-  test("current heartbeat signal becomes assistant message, not user message", () => {
+  test("current heartbeat signal becomes system message with framing, not user message", () => {
     const messages = buildConversationContext({
       signals: [
         {
@@ -68,11 +68,13 @@ describe("heartbeat signal in conversation context", () => {
       repoRoot: "/tmp",
     })
 
-    const assistantMessages = messages.filter((m) => m.role === "assistant")
+    const systemMessages = messages.filter(
+      (m) => m.role === "system" && typeof m.content === "string" && m.content.includes("background process")
+    )
     const userMessages = messages.filter((m) => m.role === "user")
 
-    expect(assistantMessages).toHaveLength(1)
-    expect(assistantMessages[0]!.content).toBe("Pushup reminder: do 17 tonight")
+    expect(systemMessages).toHaveLength(1)
+    expect(systemMessages[0]!.content).toContain("Pushup reminder: do 17 tonight")
     expect(userMessages).toHaveLength(0)
   })
 
