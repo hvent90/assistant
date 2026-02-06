@@ -95,16 +95,37 @@ async function handleApi(url: URL): Promise<Response> {
       return Response.json({ error: "not found" }, { status: 404 })
     }
     const row = result.rows[0]!
+
+    // Check if this session was triggered by a scheduled task
+    const taskResult = await pool.query<{ id: number; prompt: string; fire_at: Date }>(
+      `SELECT id, prompt, fire_at FROM scheduled_tasks WHERE session_id = $1 LIMIT 1`,
+      [sessionId]
+    )
+    const triggeredBy = taskResult.rows[0]
+      ? { id: taskResult.rows[0].id, prompt: taskResult.rows[0].prompt, fireAt: taskResult.rows[0].fire_at.toISOString() }
+      : null
+
     return Response.json({
       id: sessionId,
       createdAt: row.created_at.toISOString(),
       nodes: row.content,
+      triggeredBy,
     })
+  }
+
+  if (url.pathname === "/api/heartbeat-status") {
+    const intervalMs = Number(process.env.HEARTBEAT_INTERVAL_MS) || 1800000
+    const result = await pool.query(`SELECT value FROM kv WHERE key = 'heartbeat_last_tick_at'`)
+    const row = result.rows[0]
+    const lastTickMs: number | null = row?.value?.timestamp ?? null
+    const lastTickAt = lastTickMs ? new Date(lastTickMs).toISOString() : null
+    const nextTickAt = lastTickMs ? new Date(lastTickMs + intervalMs).toISOString() : null
+    return Response.json({ lastTickAt, nextTickAt, intervalMs })
   }
 
   if (url.pathname === "/api/scheduled-tasks") {
     const result = await pool.query(
-      `SELECT id, fire_at, prompt, status, attempts, max_attempts, last_error, created_at
+      `SELECT id, fire_at, prompt, status, attempts, max_attempts, last_error, session_id, created_at
        FROM scheduled_tasks
        ORDER BY created_at DESC`
     )
@@ -116,6 +137,7 @@ async function handleApi(url: URL): Promise<Response> {
       attempts: r.attempts,
       maxAttempts: r.max_attempts,
       lastError: r.last_error,
+      sessionId: r.session_id ?? null,
       createdAt: r.created_at.toISOString(),
     }))
     return Response.json(tasks)

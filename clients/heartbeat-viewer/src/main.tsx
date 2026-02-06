@@ -17,10 +17,17 @@ interface Session {
   preview: string
 }
 
+interface TriggeredBy {
+  id: number
+  prompt: string
+  fireAt: string
+}
+
 interface SessionDetail {
   id: number
   createdAt: string
   nodes: Node[]
+  triggeredBy?: TriggeredBy | null
 }
 
 function parseHash(): { agent: Agent; sessionId: number | null } {
@@ -40,15 +47,18 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const suppressHashUpdate = useRef(false)
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([])
+  const [triggeredBy, setTriggeredBy] = useState<TriggeredBy | null>(null)
 
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
     setGraph(null)
+    setTriggeredBy(null)
     window.location.hash = `#/${agent}/${id}`
     fetch(`/api/sessions/${id}?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: SessionDetail) => {
         setGraph(nodesToGraph(data.nodes))
+        setTriggeredBy(data.triggeredBy ?? null)
       })
       .catch((err) => setError(err.message))
   }, [agent])
@@ -148,6 +158,14 @@ function App() {
           <div className="mb-4 border border-neutral-700 p-3 text-sm text-red-400">
             error: {error}
           </div>
+        )}
+        {triggeredBy && agent === "heartbeat" && (
+          <a
+            href={`/#/scheduled`}
+            className="mb-3 block border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-400 hover:text-white"
+          >
+            Triggered by scheduled task #{triggeredBy.id}: {triggeredBy.prompt.length > 80 ? triggeredBy.prompt.slice(0, 80) + "..." : triggeredBy.prompt}
+          </a>
         )}
         {agent === "scheduled" ? (
           <ScheduledTasksView tasks={scheduledTasks} />

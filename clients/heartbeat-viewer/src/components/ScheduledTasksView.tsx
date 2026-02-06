@@ -8,6 +8,7 @@ export interface ScheduledTask {
   attempts: number
   maxAttempts: number
   lastError: string | null
+  sessionId: number | null
   createdAt: string
 }
 
@@ -69,6 +70,15 @@ function TaskCard({ task }: { task: ScheduledTask }) {
         <div className="mt-3 p-2 bg-red-950/30 border border-red-900/50 rounded text-xs text-red-400 font-mono whitespace-pre-wrap">
           {task.lastError}
         </div>
+      )}
+      {task.sessionId != null && task.status === "completed" && (
+        <a
+          href={`/#/heartbeat/${task.sessionId}`}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-2 inline-block text-xs text-blue-400 hover:text-blue-300 underline"
+        >
+          View session #{task.sessionId}
+        </a>
       )}
     </button>
   )
