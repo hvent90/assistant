@@ -6,6 +6,7 @@ import type { ContentPart } from "llm-gateway/packages/ai/types"
 
 interface ConversationThreadProps {
   graph: Graph
+  agent?: string
 }
 
 interface MessageGroup {
@@ -157,35 +158,37 @@ function ToolCallView({ content }: { content: Extract<ViewContent, { kind: "tool
 
 const MessageGroupComponent = memo(function MessageGroupComponent({
   group,
+  agent,
 }: {
   group: MessageGroup
+  agent?: string
 }) {
   const isUser = group.role === "user"
 
   return (
     <div className="mb-4">
       <div className={`font-bold ${isUser ? "text-white" : "text-green-400"}`}>
-        &gt; {isUser ? "you" : "heartbeat"}
+        &gt; {isUser ? "you" : agent ?? "assistant"}
       </div>
       {group.nodes.map((node) => (
-        <NodeContent key={node.id} node={node} />
+        <NodeContent key={node.id} node={node} agent={agent} />
       ))}
     </div>
   )
 })
 
-function NodeContent({ node }: { node: ViewNode }) {
+function NodeContent({ node, agent }: { node: ViewNode; agent?: string }) {
   return (
     <>
       <ContentView content={node.content} />
       {node.branches.map((branch, i) => (
-        <BranchView key={i} branch={branch} />
+        <BranchView key={i} branch={branch} agent={agent} />
       ))}
     </>
   )
 }
 
-function BranchView({ branch }: { branch: ViewNode[] }) {
+function BranchView({ branch, agent }: { branch: ViewNode[]; agent?: string }) {
   const [expanded, setExpanded] = useState(false)
 
   if (branch.length === 0) return null
@@ -206,7 +209,7 @@ function BranchView({ branch }: { branch: ViewNode[] }) {
         style={expanded ? undefined : { maskImage: "linear-gradient(transparent, black 40%)" }}
       >
         <div>
-          <Thread nodes={branch} />
+          <Thread nodes={branch} agent={agent} />
         </div>
       </div>
       {expanded && (
@@ -222,7 +225,7 @@ function BranchView({ branch }: { branch: ViewNode[] }) {
   )
 }
 
-function Thread({ nodes }: { nodes: ViewNode[] }) {
+function Thread({ nodes, agent }: { nodes: ViewNode[]; agent?: string }) {
   const groups = groupNodes(nodes)
 
   return (
@@ -231,13 +234,14 @@ function Thread({ nodes }: { nodes: ViewNode[] }) {
         <MessageGroupComponent
           key={`${group.runId}-${group.nodes[0]!.id}`}
           group={group}
+          agent={agent}
         />
       ))}
     </>
   )
 }
 
-export function ConversationThread({ graph }: ConversationThreadProps) {
+export function ConversationThread({ graph, agent }: ConversationThreadProps) {
   const viewNodes = projectThread(graph)
 
   if (viewNodes.length === 0) {
@@ -250,7 +254,7 @@ export function ConversationThread({ graph }: ConversationThreadProps) {
 
   return (
     <div className="space-y-4">
-      <Thread nodes={viewNodes} />
+      <Thread nodes={viewNodes} agent={agent} />
     </div>
   )
 }

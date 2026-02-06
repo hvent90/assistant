@@ -1,4 +1,4 @@
-import { StrictMode, useState, useEffect, useCallback } from "react"
+import { StrictMode, useState, useEffect, useCallback, useRef } from "react"
 import { createRoot } from "react-dom/client"
 import { ErrorBoundary } from "./components/ErrorBoundary"
 import { Sidebar } from "./components/Sidebar"
@@ -6,6 +6,8 @@ import { ConversationThread } from "./components/ConversationThread"
 import { nodesToGraph } from "./graph"
 import type { Graph, Node } from "llm-gateway/packages/ai/client"
 import "./index.css"
+
+type Agent = "heartbeat" | "conversation"
 
 interface Session {
   id: number
@@ -19,34 +21,98 @@ interface SessionDetail {
   nodes: Node[]
 }
 
+function parseHash(): { agent: Agent; sessionId: number | null } {
+  const hash = window.location.hash.replace(/^#\/?/, "")
+  const parts = hash.split("/")
+  const agent: Agent = parts[0] === "conversation" ? "conversation" : "heartbeat"
+  const sessionId = parts[1] ? parseInt(parts[1], 10) : null
+  return { agent, sessionId: sessionId && !isNaN(sessionId) ? sessionId : null }
+}
+
 function App() {
+  const initial = parseHash()
+  const [agent, setAgent] = useState<Agent>(initial.agent)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [activeId, setActiveId] = useState<number | null>(null)
+  const [activeId, setActiveId] = useState<number | null>(initial.sessionId)
   const [graph, setGraph] = useState<Graph | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const suppressHashUpdate = useRef(false)
 
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
     setGraph(null)
-    fetch(`/api/sessions/${id}`)
+    window.location.hash = `#/${agent}/${id}`
+    fetch(`/api/sessions/${id}?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: SessionDetail) => {
         setGraph(nodesToGraph(data.nodes))
       })
       .catch((err) => setError(err.message))
-  }, [])
+  }, [agent])
 
+  // Fetch sessions when agent changes
   useEffect(() => {
-    fetch("/api/sessions")
+    fetch(`/api/sessions?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: Session[]) => {
         setSessions(data)
-        if (data.length > 0) {
+        // If we have an activeId from hash, load it; otherwise load the first session
+        if (activeId !== null) {
+          loadSession(activeId)
+        } else if (data.length > 0) {
           loadSession(data[0]!.id)
         }
       })
       .catch((err) => setError(err.message))
-  }, [loadSession])
+  }, [agent]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for hashchange to support browser back/forward
+  useEffect(() => {
+    const onHashChange = () => {
+      if (suppressHashUpdate.current) {
+        suppressHashUpdate.current = false
+        return
+      }
+      const parsed = parseHash()
+      if (parsed.agent !== agent) {
+        setAgent(parsed.agent)
+        setSessions([])
+        setActiveId(parsed.sessionId)
+        setGraph(null)
+      } else if (parsed.sessionId !== activeId) {
+        if (parsed.sessionId !== null) {
+          loadSession(parsed.sessionId)
+        } else {
+          setActiveId(null)
+          setGraph(null)
+        }
+      }
+    }
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [agent, activeId, loadSession])
+
+  // Set initial hash if none present
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.location.hash = `#/${agent}`
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAgentChange = useCallback((newAgent: Agent) => {
+    if (newAgent === agent) return
+    setSessions([])
+    setActiveId(null)
+    setGraph(null)
+    setAgent(newAgent)
+    window.location.hash = `#/${newAgent}`
+  }, [agent])
+
+  const handleBack = useCallback(() => {
+    setActiveId(null)
+    setGraph(null)
+    window.location.hash = `#/${agent}`
+  }, [agent])
 
   return (
     <div className="flex h-dvh bg-black text-white">
@@ -54,11 +120,13 @@ function App() {
         sessions={sessions}
         activeId={activeId}
         onSelect={loadSession}
+        agent={agent}
+        onAgentChange={handleAgentChange}
         className={activeId !== null ? "hidden md:flex" : "flex"}
       />
       <main className={`flex-1 flex-col overflow-y-auto p-4 ${activeId === null ? "hidden md:flex" : "flex"}`}>
         <button
-          onClick={() => setActiveId(null)}
+          onClick={handleBack}
           className="mb-3 text-sm text-neutral-500 hover:text-white md:hidden"
         >
           &larr; sessions
@@ -69,7 +137,7 @@ function App() {
           </div>
         )}
         {graph ? (
-          <ConversationThread graph={graph} />
+          <ConversationThread graph={graph} agent={agent} />
         ) : activeId !== null ? (
           <div className="flex h-full items-center justify-center text-neutral-600">
             loading...

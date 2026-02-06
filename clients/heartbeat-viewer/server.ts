@@ -17,7 +17,12 @@ interface SessionRow {
 function extractPreview(nodes: Node[]): string {
   for (const node of nodes) {
     if (node.kind === "text" && node.content) {
-      return node.content.slice(0, 120)
+      return (typeof node.content === "string" ? node.content : "").slice(0, 120)
+    }
+    if (node.kind === "user" && node.content) {
+      const c = node.content
+      const text = typeof c === "string" ? c : Array.isArray(c) ? c.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") : ""
+      return text.slice(0, 120)
     }
   }
   return ""
@@ -25,6 +30,23 @@ function extractPreview(nodes: Node[]): string {
 
 async function handleApi(url: URL): Promise<Response> {
   if (url.pathname === "/api/sessions") {
+    const agent = url.searchParams.get("agent") ?? "heartbeat"
+
+    if (agent === "conversation") {
+      const result = await pool.query<SessionRow>(
+        `SELECT DISTINCT ON (m.session_id) m.session_id, s.created_at, m.content
+         FROM messages m JOIN sessions s ON s.id = m.session_id
+         WHERE m.agent = 'conversation'
+         ORDER BY m.session_id DESC, m.created_at ASC`
+      )
+      const sessions = result.rows.map((r) => ({
+        id: r.session_id,
+        createdAt: r.created_at.toISOString(),
+        preview: extractPreview(r.content),
+      }))
+      return Response.json(sessions)
+    }
+
     const result = await pool.query<SessionRow>(
       `SELECT m.session_id, s.created_at, m.content
        FROM messages m JOIN sessions s ON s.id = m.session_id
@@ -42,6 +64,27 @@ async function handleApi(url: URL): Promise<Response> {
   const match = url.pathname.match(/^\/api\/sessions\/(\d+)$/)
   if (match) {
     const sessionId = Number(match[1])
+    const agent = url.searchParams.get("agent") ?? "heartbeat"
+
+    if (agent === "conversation") {
+      const result = await pool.query<{ content: Node[]; created_at: Date }>(
+        `SELECT m.content, s.created_at
+         FROM messages m JOIN sessions s ON s.id = m.session_id
+         WHERE m.agent = 'conversation' AND m.session_id = $1
+         ORDER BY m.created_at ASC`,
+        [sessionId]
+      )
+      if (result.rows.length === 0) {
+        return Response.json({ error: "not found" }, { status: 404 })
+      }
+      const nodes = result.rows.flatMap((r) => r.content)
+      return Response.json({
+        id: sessionId,
+        createdAt: result.rows[0]!.created_at.toISOString(),
+        nodes,
+      })
+    }
+
     const result = await pool.query<{ content: Node[]; created_at: Date }>(
       `SELECT m.content, s.created_at
        FROM messages m JOIN sessions s ON s.id = m.session_id

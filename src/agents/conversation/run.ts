@@ -107,7 +107,9 @@ export async function spawnConversationRun(opts: ConversationRunOpts, signals: S
     })
 
     // Stream response to Discord while collecting nodes
-    const renderer = channelId ? discord.createStreamRenderer(channelId) : null
+    const viewerBase = process.env.VIEWER_BASE_URL
+    const viewerPrefix = viewerBase ? `[view session](${viewerBase}/#/conversation/${sessionId})` : undefined
+    const renderer = channelId ? discord.createStreamRenderer(channelId, { prefix: viewerPrefix }) : null
     const nodes = await collectAgentOutput(orchestrator.events(), renderer?.onEvent)
     if (renderer) await renderer.flush()
 

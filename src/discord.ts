@@ -60,7 +60,7 @@ function renderViewNodes(nodes: ViewNode[]): string {
 export type DiscordChannel = {
   start(): Promise<void>
   send(channelId: string, text: string): Promise<void>
-  createStreamRenderer(channelId: string): {
+  createStreamRenderer(channelId: string, opts?: { prefix?: string }): {
     onEvent: (event: ConsumerHarnessEvent, graph: Graph) => void
     flush: () => Promise<void>
   }
@@ -165,7 +165,8 @@ export function createDiscordChannel(opts: {
         await (channel as DMChannel).send(chunk)
       }
     },
-    createStreamRenderer(channelId: string) {
+    createStreamRenderer(channelId: string, opts?: { prefix?: string }) {
+      const prefix = opts?.prefix ?? ""
       let msg: Message | null = null
       let hasUnsentReasoning = false
       let pendingRender: string | null = null
@@ -232,12 +233,13 @@ export function createDiscordChannel(opts: {
           if (!shouldUpdate) return
 
           const viewNodes = projectThread(graph)
-          const rendered = renderViewNodes(viewNodes)
+          const rendered = prefix ? prefix + "\n" + renderViewNodes(viewNodes) : renderViewNodes(viewNodes)
           if (rendered) scheduleUpdate(rendered)
         },
         async flush() {
           const viewNodes = projectThread(latestGraph)
-          const finalRendered = renderViewNodes(viewNodes)
+          const raw = renderViewNodes(viewNodes)
+          const finalRendered = prefix ? prefix + "\n" + raw : raw
           if (finalRendered) {
             pendingRender = finalRendered
             await flushUpdate()
