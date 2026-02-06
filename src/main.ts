@@ -62,7 +62,7 @@ async function main() {
   // Start scheduler for scheduled tasks
   const scheduler = await startScheduler({
     onTask: async (task) => {
-      await spawnHeartbeatRun(
+      return spawnHeartbeatRun(
         { queue, statusBoard, model: DEFAULT_MODEL, memoriesDir: MEMORIES_DIR },
         task.prompt,
       )

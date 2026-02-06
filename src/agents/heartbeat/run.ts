@@ -18,7 +18,7 @@ export type HeartbeatRunOpts = {
   memoriesDir: string
 }
 
-export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: string): Promise<void> {
+export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: string): Promise<number> {
   const { queue, statusBoard, model, memoriesDir } = opts
 
   await statusBoard.update("heartbeat", { status: "running", detail: addendum ? "executing scheduled task" : "reflecting on recent activity" })
@@ -56,6 +56,8 @@ export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: strin
         sessionId,
       })
     }
+
+    return sessionId
   } finally {
     await statusBoard.update("heartbeat", { status: "idle", detail: null })
   }

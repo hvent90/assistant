@@ -38,3 +38,5 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_pending ON scheduled_tasks(fire_at)
   WHERE status IN ('pending', 'failed');
+
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES sessions(id);

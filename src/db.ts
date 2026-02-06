@@ -81,6 +81,7 @@ export type ScheduledTask = {
   attempts: number
   max_attempts: number
   last_error: string | null
+  session_id: number | null
   created_at: Date
 }
 
@@ -106,7 +107,8 @@ export async function getPendingDueTasks(now: Date): Promise<ScheduledTask[]> {
 export async function updateTaskStatus(
   id: number,
   status: "running" | "completed" | "failed" | "cancelled",
-  error?: string
+  error?: string,
+  sessionId?: number
 ): Promise<void> {
   if (status === "running") {
     await getPool().query(
@@ -117,6 +119,11 @@ export async function updateTaskStatus(
     await getPool().query(
       "UPDATE scheduled_tasks SET status = $1, last_error = $2 WHERE id = $3",
       [status, error ?? null, id]
+    )
+  } else if (status === "completed" && sessionId != null) {
+    await getPool().query(
+      "UPDATE scheduled_tasks SET status = $1, session_id = $2 WHERE id = $3",
+      [status, sessionId, id]
     )
   } else {
     await getPool().query(

@@ -4,7 +4,7 @@ const POLL_INTERVAL_MS = 60_000
 const LAST_POLL_KEY = "scheduler_last_poll_at"
 
 export async function pollOnce(
-  onTask: (task: ScheduledTask) => Promise<void>,
+  onTask: (task: ScheduledTask) => Promise<number>,
 ): Promise<void> {
   const tasks = await getPendingDueTasks(new Date())
 
@@ -12,8 +12,8 @@ export async function pollOnce(
     tasks.map(async (task) => {
       await updateTaskStatus(task.id, "running")
       try {
-        await onTask(task)
-        await updateTaskStatus(task.id, "completed")
+        const sessionId = await onTask(task)
+        await updateTaskStatus(task.id, "completed", undefined, sessionId)
       } catch (err: any) {
         await updateTaskStatus(task.id, "failed", err.message ?? String(err))
       }
@@ -22,7 +22,7 @@ export async function pollOnce(
 }
 
 type SchedulerOpts = {
-  onTask: (task: ScheduledTask) => Promise<void>
+  onTask: (task: ScheduledTask) => Promise<number>
 }
 
 export async function startScheduler(opts: SchedulerOpts) {
