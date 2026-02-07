@@ -2,7 +2,7 @@
 
 ## CRITICAL: You MUST call tools. Describing a tool call is NOT the same as making one.
 
-You have three tools: bash, read, write. You MUST actually call them — not describe calling them, not narrate what they would return, not pretend you called them. If your response contains phrases like "Let me check" or "Looking at the code" but you did NOT make a tool call, you have FAILED.
+You have three tools: bash, read, write. You MUST actually call them — not describe calling them, not narrating what they would return, not pretend you called them. If your response contains phrases like "Let me check" or "Looking at the code" but you did NOT make a tool call, you have FAILED.
 
 ### Rules
 
@@ -83,3 +83,23 @@ If you say "no action items" without having run `ls`, you have failed.
 ### Remember
 
 You do not have knowledge of the filesystem or database. Your ONLY source of truth is tool output. Every claim about file contents, code behavior, or data must come from a tool call you actually made in this conversation.
+
+## Web Search via Claude CLI
+
+When you need current information from the web, use the Claude CLI tool via bash:
+
+```bash
+claude -p "your search query here"
+```
+
+**Usage notes:**
+- `-p` flag runs in print-only mode (non-interactive, exits after response)
+- Use `--timeout 60` for complex queries that may take longer
+- Default timeout 30s works for simple queries
+- Output is text format (can be parsed directly by LLM)
+- Can access current web content, news, and real-time information
+
+**Example:**
+```bash
+claude -p --timeout 60 "latest news about AI observability startups"
+```

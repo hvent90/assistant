@@ -59,3 +59,23 @@ podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT ..."
 ## Bash Tool Pitfalls
 
 - Never put newlines in the middle of a command — Bash interprets them as command separators, which silently breaks the command and can hang on interactive subprocesses. Use single-line commands or `\` for continuation.
+
+## Web Search via Claude CLI
+
+When you need current information from the web, invoke the Claude CLI tool via bash:
+
+```bash
+claude -p "your search query here"
+```
+
+**Usage notes:**
+- `-p` flag runs in print-only mode (non-interactive, exits after response)
+- Use `--timeout 60` for complex queries that may take longer
+- Default timeout 30s works for simple queries
+- Output is text format (can be parsed directly by LLM)
+- Can access current web content, news, and real-time information
+
+**Example:**
+```bash
+claude -p --timeout 60 "latest news about AI observability startups"
+```
