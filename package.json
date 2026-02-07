@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run --watch src/main.ts",
     "start": "bun run src/main.ts",
-    "pm2:start": "bun run viewer:build && bunx pm2 start ecosystem.config.cjs",
+    "pm2:start": "bunx pm2 start ecosystem.config.cjs",
     "pm2:stop": "bunx pm2 stop all",
     "pm2:restart": "bunx pm2 restart all",
     "pm2:logs": "bunx pm2 logs",
