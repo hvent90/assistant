@@ -1,0 +1,32 @@
+#!/bin/bash
+# Minimal app bundle wrapper for remindctl.
+# macOS grants TCC permissions to .app bundles, so this gets its own
+# Reminders permission entry that works from any calling process.
+#
+# When called with --wrapper-outfile <path>, writes output to that file
+# instead of stdout (needed when launched via `open` which discards stdout).
+
+OUTFILE=""
+DONEFILE=""
+ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --wrapper-outfile)
+      OUTFILE="$2"
+      DONEFILE="$2.done"
+      shift 2
+      ;;
+    *)
+      ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ -n "$OUTFILE" ]; then
+  /opt/homebrew/bin/remindctl "${ARGS[@]}" > "$OUTFILE" 2>&1
+  echo $? > "$DONEFILE"
+else
+  exec /opt/homebrew/bin/remindctl "${ARGS[@]}"
+fi
