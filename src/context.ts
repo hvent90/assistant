@@ -2,7 +2,12 @@ import type { StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"
 
 export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string, skillsPrompt?: string): string {
+  const now = new Date()
+  const currentTime = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC'
+
   let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.
+
+Current time: ${currentTime}
 
 ## Output
 Your text output is streamed directly to the user via Discord. To communicate with the user, simply write your message as text — no tool calls or special delivery mechanisms needed.`

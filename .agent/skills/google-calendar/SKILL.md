@@ -7,6 +7,15 @@ description: Manage Google Calendar events using the gog CLI. Create, list, upda
 
 You can manage the user's Google Calendar using the `gog` CLI tool via bash.
 
+## AI Calendar
+
+**ALWAYS use this calendar for events you create:**
+- Calendar ID: `km0dp70e6opan39d1kpse3a7ro@group.calendar.google.com`
+- Name: "Assistant" (user will rename from "Habits")
+- Purpose: Events created by the AI assistant (reminders, habits, tasks)
+
+Events synced from memos/reminders, habits, and task tracking go here. Keep the primary calendar clean for personal/manual entries.
+
 ## Pre-flight
 
 Before any calendar operation, check if gog is available:
@@ -26,7 +35,7 @@ Calendar connection needs to be re-authorized and follow Phase 3 of SETUP.md.
 All commands support `--json` for structured output. Always use `--json`
 so you can parse the results.
 
-The default calendar ID is `primary`.
+**Default calendar for AI events:** `km0dp70e6opan39d1kpse3a7ro@group.calendar.google.com`
 
 ### List Events
 
@@ -56,7 +65,7 @@ gog calendar event primary EVENT_ID --json
 ### Create Event
 
 ```bash
-gog calendar create primary \
+gog calendar create "km0dp70e6opan39d1kpse3a7ro@group.calendar.google.com" \
   --summary "Team Standup" \
   --from 2026-02-07T09:00:00-08:00 \
   --to 2026-02-07T09:30:00-08:00 \
@@ -76,7 +85,7 @@ Optional flags:
 ### Update Event
 
 ```bash
-gog calendar update primary EVENT_ID \
+gog calendar update "km0dp70e6opan39d1kpse3a7ro@group.calendar.google.com" EVENT_ID \
   --summary "New Title" \
   --from 2026-02-07T10:00:00-08:00 \
   --to 2026-02-07T11:00:00-08:00 \
@@ -89,7 +98,7 @@ All create flags work for update too, plus:
 ### Delete Event
 
 ```bash
-gog calendar delete primary EVENT_ID --force
+gog calendar delete "km0dp70e6opan39d1kpse3a7ro@group.calendar.google.com" EVENT_ID --force
 ```
 
 Always use `--force` to skip the interactive confirmation prompt.
