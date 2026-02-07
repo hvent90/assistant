@@ -57,6 +57,44 @@ describe("buildConversationContext", () => {
     expect(userMsgs[0]!.content).toContain("whats up")
   })
 
+  test("includes skills prompt in system message", () => {
+    const signals: Signal[] = [
+      { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
+    ]
+
+    const messages = buildConversationContext({
+      signals,
+      history: [],
+      statusBoard: baseBoard,
+      memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
+      skillsPrompt: '<available_skills>\n  <skill>\n    <name>test-skill</name>\n    <description>A test skill</description>\n    <location>/tmp/skills/test-skill/SKILL.md</location>\n  </skill>\n</available_skills>',
+    })
+
+    const system = messages[0]!
+    expect(system.content).toContain("test-skill")
+    expect(system.content).toContain("available_skills")
+  })
+
+  test("omits skills section when no skills prompt", () => {
+    const signals: Signal[] = [
+      { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
+    ]
+
+    const messages = buildConversationContext({
+      signals,
+      history: [],
+      statusBoard: baseBoard,
+      memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
+    })
+
+    const system = messages[0]!
+    expect(system.content).not.toContain("available_skills")
+  })
+
   test("includes memory in system prompt when soul.md exists", () => {
     const signals: Signal[] = [
       { type: "message", source: "discord", content: [{ type: "text", text: "hi" }], timestamp: 1 },
@@ -218,6 +256,20 @@ describe("buildHeartbeatContext", () => {
     expect(userMsg!.content).toContain("heartbeat")
     // No history messages — only system and user
     expect(messages).toHaveLength(2)
+  })
+
+  test("includes skills prompt in system message", () => {
+    const messages = buildHeartbeatContext({
+      statusBoard: baseBoard,
+      memory: noMemory,
+      memoriesDir: testMemoriesDir,
+      repoRoot: testRepoRoot,
+      skillsPrompt: '<available_skills>\n  <skill>\n    <name>heartbeat-skill</name>\n    <description>A heartbeat skill</description>\n    <location>/tmp/skills/heartbeat-skill/SKILL.md</location>\n  </skill>\n</available_skills>',
+    })
+
+    const system = messages[0]!
+    expect(system.content).toContain("heartbeat-skill")
+    expect(system.content).toContain("available_skills")
   })
 
   test("includes memory when files exist", () => {

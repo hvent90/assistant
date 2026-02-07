@@ -1,7 +1,7 @@
 import type { StatusBoard } from "./types"
 import type { MemoryFiles } from "./memory"
 
-export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string): string {
+export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string, skillsPrompt?: string): string {
   let prompt = `You are a personal AI assistant. You run in the background and help your user with whatever they need. You have access to bash for executing commands, reading files, and querying databases.
 
 ## Output
@@ -41,6 +41,10 @@ Your text output is streamed directly to the user via Discord. To communicate wi
   if (activeAgents.length > 0) {
     const lines = activeAgents.map(([name, s]) => `- ${name}: ${s.detail ?? "working"}`).join("\n")
     prompt += `\n\nYour other processes currently running:\n${lines}`
+  }
+
+  if (skillsPrompt) {
+    prompt += `\n\n${skillsPrompt}`
   }
 
   return prompt

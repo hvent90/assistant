@@ -3,6 +3,7 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools"
+import { discoverSkills, formatSkillsPrompt } from "llm-gateway/packages/ai/skills"
 import { createScheduleTool, readTool, writeTool } from "../../tools"
 import { buildConversationContext } from "./context"
 import { readMemoryFiles } from "../../memory"
@@ -88,7 +89,9 @@ export async function spawnConversationRun(opts: ConversationRunOpts, signals: S
     // Build context
     const memory = await readMemoryFiles(memoriesDir)
     const repoRoot = join(memoriesDir, "..")
-    const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot })
+    const skills = await discoverSkills([join(repoRoot, ".agent/skills")])
+    const skillsPrompt = formatSkillsPrompt(skills)
+    const messages = buildConversationContext({ signals, history, statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot, skillsPrompt })
 
     const scheduleTool = createScheduleTool()
 

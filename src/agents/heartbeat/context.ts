@@ -2,6 +2,7 @@ import type { Message } from "llm-gateway/packages/ai/types"
 import type { StatusBoard } from "../../types"
 import type { MemoryFiles } from "../../memory"
 import { buildSystemPrompt } from "../../context"
+import { formatLocalTime } from "../../format-time"
 
 type HeartbeatContextInput = {
   statusBoard: StatusBoard
@@ -9,12 +10,13 @@ type HeartbeatContextInput = {
   memoriesDir: string
   repoRoot: string
   addendum?: string
+  skillsPrompt?: string
 }
 
-export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot, addendum }: HeartbeatContextInput): Message[] {
+export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot, addendum, skillsPrompt }: HeartbeatContextInput): Message[] {
   const messages: Message[] = []
 
-  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot) })
+  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot, skillsPrompt) })
 
   let heartbeatPrompt = `This is a heartbeat signal. You MUST do the following steps using actual tool calls:
 
@@ -36,6 +38,8 @@ IMPORTANT: Do NOT say "no action items" unless you have actually run ls and read
   }
 
   messages.push({ role: "user", content: heartbeatPrompt })
+
+  messages.push({ role: "system", content: `Current time: ${formatLocalTime(new Date())}` })
 
   return messages
 }

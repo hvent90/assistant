@@ -13,12 +13,13 @@ type ConversationContextInput = {
   memory: MemoryFiles
   memoriesDir: string
   repoRoot: string
+  skillsPrompt?: string
 }
 
-export function buildConversationContext({ signals, history, statusBoard, memory, memoriesDir, repoRoot }: ConversationContextInput): Message[] {
+export function buildConversationContext({ signals, history, statusBoard, memory, memoriesDir, repoRoot, skillsPrompt }: ConversationContextInput): Message[] {
   const messages: Message[] = []
 
-  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot) })
+  messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot, skillsPrompt) })
 
   // Conversation history
   for (const msg of history) {

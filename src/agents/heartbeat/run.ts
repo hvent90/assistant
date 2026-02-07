@@ -3,6 +3,7 @@ import { AgentOrchestrator } from "llm-gateway/packages/ai/orchestrator"
 import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools"
+import { discoverSkills, formatSkillsPrompt } from "llm-gateway/packages/ai/skills"
 import { createSpeakTool, createScheduleTool, readTool, writeTool } from "../../tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles } from "../../memory"
@@ -27,7 +28,9 @@ export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: strin
     const sessionId = await createSession()
     const memory = await readMemoryFiles(memoriesDir)
     const repoRoot = join(memoriesDir, "..")
-    const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot, addendum })
+    const skills = await discoverSkills([join(repoRoot, ".agent/skills")])
+    const skillsPrompt = formatSkillsPrompt(skills)
+    const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot, addendum, skillsPrompt })
 
     const speakTool = createSpeakTool(queue)
     const scheduleTool = createScheduleTool()
