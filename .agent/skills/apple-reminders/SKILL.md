@@ -63,14 +63,20 @@ Filters: `today`, `tomorrow`, `week`, `overdue`, `upcoming`, `completed`, `all`,
 <project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh add --title "Call mom" --list Assistant --due tomorrow --json
 ```
 
-Due date formats: `today`, `tomorrow`, ISO date (`2026-02-10`), ISO datetime (`2026-02-10T14:00:00`).
+Due date formats:
+- Named: `today`, `tomorrow`
+- Date only: `2026-02-10`
+- Date + time: `"2026-02-10 14:00"` (space separator, NOT `T` — ISO 8601 `T` format is rejected)
 
 ### Edit Reminder
 
 ```bash
 <project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh edit <id> --title "Updated title" --json
 <project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh edit <id> --due 2026-02-15 --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh edit <id> --due "2026-02-15 14:00" --json
 ```
+
+Date formats are the same as for add. Use `"YYYY-MM-DD HH:MM"` for specific times.
 
 ### Complete Reminder
 
@@ -121,7 +127,8 @@ tool with a summary of what's due.
   results conversationally to the user.
 - **Reasonable defaults** — when the user is vague ("remind me tomorrow"),
   pick sensible defaults. For "tomorrow morning", use tomorrow with no
-  specific time (all-day). For specific times, use ISO datetime.
+  specific time (all-day). For specific times, use `"YYYY-MM-DD HH:MM"`
+  format with a space separator (NOT ISO 8601 `T` format).
 - **Reminder IDs** — when you need to complete, edit, or delete, first
   list reminders to find the ID from the JSON output.
 - **Scoping** — always pass `--list Assistant` when creating or filtering.
