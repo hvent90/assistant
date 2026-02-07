@@ -37,7 +37,9 @@ IMPORTANT: Do NOT say "no action items" unless you have actually run ls and read
     heartbeatPrompt += `\n\n## Scheduled Task\n\n${addendum}`
   }
 
-  messages.push({ role: "user", content: heartbeatPrompt })
+  messages.push({ role: "system", content: heartbeatPrompt })
+
+  messages.push({ role: "user", content: "[heartbeat tick]" })
 
   messages.push({ role: "system", content: `Current time: ${formatLocalTime(new Date())}` })
 

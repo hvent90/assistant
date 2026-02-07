@@ -10,15 +10,17 @@ const idleBoard: StatusBoard = {
 }
 
 describe("context time formatting", () => {
-  test("buildHeartbeatContext does not use ISO format for current time", () => {
+  test("buildHeartbeatContext includes current time in local format", () => {
     const messages = buildHeartbeatContext({
       statusBoard: idleBoard,
       memory: emptyMemory,
       memoriesDir: "/tmp/memories",
       repoRoot: "/tmp",
     })
-    const allText = messages.map((m) => (typeof m.content === "string" ? m.content : "")).join("\n")
-    expect(allText).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)
+    const systemMessages = messages.filter((m) => m.role === "system")
+    const currentTimeMsg = systemMessages.find((m) => typeof m.content === "string" && m.content.startsWith("Current time:"))
+    expect(currentTimeMsg).toBeDefined()
+    expect(currentTimeMsg!.content as string).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)
   })
 
   test("buildConversationContext uses local time for current time system message", () => {
