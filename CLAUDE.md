@@ -56,6 +56,10 @@ Query the database via podman:
 podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT ..."
 ```
 
+## Reference Docs
+
+- `docs/writing-a-good-claude-md.md` - Principles for maintaining this file (progressive disclosure, brevity, no linter rules)
+
 ## Bash Tool Pitfalls
 
 - Never put newlines in the middle of a command — Bash interprets them as command separators, which silently breaks the command and can hang on interactive subprocesses. Use single-line commands or `\` for continuation.
