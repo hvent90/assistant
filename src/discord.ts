@@ -5,6 +5,7 @@ import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { ContentPart } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "./queue"
 import { getKv, setKv, createSession } from "./db"
+import { transcribeVoice } from "./transcribe"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
@@ -91,6 +92,7 @@ export function createDiscordChannel(opts: {
     }
 
     for (const attachment of message.attachments.values()) {
+      console.log("attachment:", { name: attachment.name, contentType: attachment.contentType, duration: attachment.duration, url: attachment.url?.slice(0, 80) })
       if (attachment.contentType?.startsWith("image/")) {
         const res = await fetch(attachment.url)
         const buf = Buffer.from(await res.arrayBuffer())
@@ -100,7 +102,14 @@ export function createDiscordChannel(opts: {
           data: buf.toString("base64"),
         })
       }
-      // Non-image attachments: skip for now
+      else if (attachment.contentType?.startsWith("audio/") && attachment.duration) {
+        console.log("transcribing voice message...")
+        const text = await transcribeVoice(attachment.url)
+        console.log("transcription result:", text)
+        if (text) {
+          content.push({ type: "text", text: `[voice message]: ${text}` })
+        }
+      }
     }
 
     const discord = {
