@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { collectAgentOutput } from "./collect"
+import { collectAgentOutput } from "../collect"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 
 type OrchestratorEvent = { agentId: string; event: ConsumerHarnessEvent }

@@ -1,7 +1,7 @@
 import { getKv, setKv } from "../../db"
 import { spawnHeartbeatRun, type HeartbeatRunOpts } from "./run"
 
-export { spawnHeartbeatRun, type HeartbeatRunOpts } from "./run"
+export { spawnHeartbeatRun } from "./run"
 
 export function computeStartDelay(lastTickMs: number | null, intervalMs: number, nowMs: number = Date.now()): number {
   if (lastTickMs === null) return 0

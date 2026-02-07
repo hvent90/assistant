@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { nodesToMessages } from "./projection"
+import { nodesToMessages } from "../projection"
 import type { Node } from "llm-gateway/packages/ai/client"
 
 describe("nodesToMessages", () => {
