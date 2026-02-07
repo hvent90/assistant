@@ -1,19 +1,21 @@
 ---
 name: apple-reminders
-description: Manage Apple Reminders using remindctl. Create, list, complete, edit, and delete reminders with due dates.
+description: Manage Apple Reminders using remindctl via the wrapper script. IMPORTANT - never call remindctl directly, always use the wrapper at .agent/skills/apple-reminders/remindctl-wrapper.sh (relative to project root).
 ---
 
 # Apple Reminders
 
 You can manage the user's Apple Reminders using the `remindctl` CLI tool via bash.
 
-**Important:** Always use the wrapper script instead of calling `remindctl`
-directly. The wrapper routes through a .app bundle that has macOS Reminders
-permission, which is required for daemon processes (pm2, tmux, etc).
+**NEVER call `remindctl` directly.** Always use the wrapper script:
 
-```bash
-REMINDCTL=".agent/skills/apple-reminders/remindctl-wrapper.sh"
 ```
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh
+```
+
+The wrapper routes through a .app bundle that has macOS Reminders
+permission. Calling `remindctl` directly will fail with a permission error
+because the agent runs as a daemon process (pm2/tmux).
 
 ## Dedicated List
 
@@ -29,27 +31,27 @@ but never create, complete, edit, or delete reminders outside the Assistant list
 Before any reminders operation, check if the wrapper works:
 
 ```bash
-$REMINDCTL status --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh status --json
 ```
 
-If it returns `"authorized": false`, read `.agent/skills/apple-reminders/SETUP.md`
-and follow the setup process.
+If it returns `"authorized": false`, read the SETUP.md in this skill's
+directory and follow the setup process.
 
 ## Commands
 
 All commands support `--json` for structured output. Always use `--json`
-so you can parse the results.
+so you can parse the results. Replace `<project-root>` with the actual
+project root path from the system prompt.
 
 ### Show Reminders
 
 ```bash
-$REMINDCTL today --list Assistant --json
-$REMINDCTL tomorrow --list Assistant --json
-$REMINDCTL week --list Assistant --json
-$REMINDCTL overdue --list Assistant --json
-$REMINDCTL upcoming --list Assistant --json
-$REMINDCTL all --list Assistant --json
-$REMINDCTL 2026-02-07 --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh today --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh tomorrow --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh week --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh overdue --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh upcoming --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh all --list Assistant --json
 ```
 
 Filters: `today`, `tomorrow`, `week`, `overdue`, `upcoming`, `completed`, `all`, or a specific date (YYYY-MM-DD).
@@ -57,9 +59,8 @@ Filters: `today`, `tomorrow`, `week`, `overdue`, `upcoming`, `completed`, `all`,
 ### Add Reminder
 
 ```bash
-$REMINDCTL add "Buy milk" --list Assistant --json
-$REMINDCTL add --title "Call mom" --list Assistant --due tomorrow --json
-$REMINDCTL add --title "Submit report" --list Assistant --due 2026-02-10 --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh add "Buy milk" --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh add --title "Call mom" --list Assistant --due tomorrow --json
 ```
 
 Due date formats: `today`, `tomorrow`, ISO date (`2026-02-10`), ISO datetime (`2026-02-10T14:00:00`).
@@ -67,16 +68,14 @@ Due date formats: `today`, `tomorrow`, ISO date (`2026-02-10`), ISO datetime (`2
 ### Edit Reminder
 
 ```bash
-$REMINDCTL edit <id> --title "Updated title" --json
-$REMINDCTL edit <id> --due 2026-02-15 --json
-$REMINDCTL edit <id> --title "New title" --due tomorrow --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh edit <id> --title "Updated title" --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh edit <id> --due 2026-02-15 --json
 ```
 
 ### Complete Reminder
 
 ```bash
-$REMINDCTL complete <id> --json
-$REMINDCTL complete <id1> <id2> <id3> --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh complete <id> --json
 ```
 
 Multiple IDs can be completed at once.
@@ -84,7 +83,7 @@ Multiple IDs can be completed at once.
 ### Delete Reminder
 
 ```bash
-$REMINDCTL delete <id> --force --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh delete <id> --force --json
 ```
 
 Always use `--force` to skip the interactive confirmation prompt.
@@ -92,16 +91,13 @@ Always use `--force` to skip the interactive confirmation prompt.
 ### List Management
 
 ```bash
-$REMINDCTL list --json
-$REMINDCTL list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh list --json
 ```
-
-Use `$REMINDCTL list --json` to see all available lists (read-only context).
 
 ### Check Permission Status
 
 ```bash
-$REMINDCTL status --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh status --json
 ```
 
 ## Heartbeat
@@ -109,8 +105,8 @@ $REMINDCTL status --json
 On each heartbeat tick, check for due and overdue reminders:
 
 ```bash
-$REMINDCTL overdue --list Assistant --json
-$REMINDCTL today --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh overdue --list Assistant --json
+<project-root>/.agent/skills/apple-reminders/remindctl-wrapper.sh today --list Assistant --json
 ```
 
 If there are overdue or due-today items, notify the user via the `speak`
