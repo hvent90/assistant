@@ -1,49 +1,17 @@
 import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, type DMChannel, type Message } from "discord.js"
 import { createGraph, projectThread } from "llm-gateway/packages/ai/client"
-import type { Graph, ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
+import type { Graph } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { ContentPart } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "./queue"
 import { getKv, setKv, createSession } from "./db"
 import { transcribeVoice } from "./transcribe"
+import { renderViewNodes, splitMessage } from "./discord-util"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 
 // Events that trigger a Discord message update (not streaming deltas)
 const UPDATE_EVENTS = new Set(["harness_start", "harness_end", "tool_call", "tool_result", "error"])
-
-function renderViewContent(content: ViewContent): string {
-  switch (content.kind) {
-    case "text":
-      return content.text
-    case "reasoning":
-      return `> *${content.text.split("\n").join("\n> ")}*`
-    case "tool_call":
-      return `\`${content.name}\``
-    case "error":
-      return `**Error:** ${content.message}`
-    case "pending":
-      return "*thinking...*"
-    case "user":
-    case "relay":
-      return ""
-  }
-}
-
-function renderViewNodes(nodes: ViewNode[]): string {
-  const parts: string[] = []
-  for (const node of nodes) {
-    if (node.role === "user") continue
-    const text = renderViewContent(node.content)
-    if (text) parts.push(text)
-    // Render branches (subagent responses nested under tool calls)
-    for (const branch of node.branches) {
-      const branchText = renderViewNodes(branch)
-      if (branchText) parts.push(branchText)
-    }
-  }
-  return parts.join("\n")
-}
 
 export type DiscordChannel = {
   start(): Promise<void>
@@ -69,6 +37,9 @@ export function createDiscordChannel(opts: {
     partials: [Partials.Channel],
   })
 
+  client.on("error", (err) => console.error("discord client error:", err))
+  client.on("warn", (msg) => console.warn("discord warning:", msg))
+
   let ownerDmChannelId: string | null = null
   const loaded = getKv(DM_CHANNEL_KEY).then((v) => {
     if (v && typeof v === "object" && "channelId" in v) {
@@ -77,74 +48,78 @@ export function createDiscordChannel(opts: {
   }).catch(() => {})
 
   client.on("messageCreate", async (message) => {
-    if (message.author.bot) return
-    if (!message.channel.isDMBased()) return
-    if (opts.allowedUsername && message.author.username !== opts.allowedUsername) return
+    try {
+      if (message.author.bot) return
+      if (!message.channel.isDMBased()) return
+      if (opts.allowedUsername && message.author.username !== opts.allowedUsername) return
 
-    // Track the DM channel for proactive messaging
-    ownerDmChannelId = message.channel.id
-    setKv(DM_CHANNEL_KEY, { channelId: message.channel.id }).catch(() => {})
+      // Track the DM channel for proactive messaging
+      ownerDmChannelId = message.channel.id
+      setKv(DM_CHANNEL_KEY, { channelId: message.channel.id }).catch(() => {})
 
-    const content: ContentPart[] = []
+      const content: ContentPart[] = []
 
-    if (message.content) {
-      content.push({ type: "text", text: message.content })
-    }
-
-    for (const attachment of message.attachments.values()) {
-      console.log("attachment:", { name: attachment.name, contentType: attachment.contentType, duration: attachment.duration, url: attachment.url?.slice(0, 80) })
-      if (attachment.contentType?.startsWith("image/")) {
-        const res = await fetch(attachment.url)
-        const buf = Buffer.from(await res.arrayBuffer())
-        content.push({
-          type: "image",
-          mediaType: attachment.contentType,
-          data: buf.toString("base64"),
-        })
+      if (message.content) {
+        content.push({ type: "text", text: message.content })
       }
-      else if (attachment.contentType?.startsWith("audio/") && attachment.duration) {
-        console.log("transcribing voice message...")
-        const text = await transcribeVoice(attachment.url)
-        console.log("transcription result:", text)
-        if (text) {
-          content.push({ type: "text", text: `[voice message]: ${text}` })
+
+      for (const attachment of message.attachments.values()) {
+        console.log("attachment:", { name: attachment.name, contentType: attachment.contentType, duration: attachment.duration, url: attachment.url?.slice(0, 80) })
+        if (attachment.contentType?.startsWith("image/")) {
+          const res = await fetch(attachment.url)
+          const buf = Buffer.from(await res.arrayBuffer())
+          content.push({
+            type: "image",
+            mediaType: attachment.contentType,
+            data: buf.toString("base64"),
+          })
+        }
+        else if (attachment.contentType?.startsWith("audio/") && attachment.duration) {
+          console.log("transcribing voice message...")
+          const text = await transcribeVoice(attachment.url)
+          console.log("transcription result:", text)
+          if (text) {
+            content.push({ type: "text", text: `[voice message]: ${text}` })
+          }
         }
       }
-    }
 
-    const discord = {
-      type: message.type,
-      flags: message.flags.toArray(),
-      createdAt: message.createdTimestamp,
-      editedAt: message.editedTimestamp,
-      pinned: message.pinned,
-      tts: message.tts,
-      author: { id: message.author.id, username: message.author.username },
-      content: message.content || null,
-      attachments: [...message.attachments.values()].map(a => ({
-        name: a.name,
-        contentType: a.contentType,
-        size: a.size,
-        duration: a.duration,
-        waveform: a.waveform,
-        width: a.width,
-        height: a.height,
-        description: a.description,
-      })),
-      embeds: message.embeds.map(e => e.toJSON()),
-      stickers: [...message.stickers.values()].map(s => ({ name: s.name, format: s.format })),
-      reference: message.reference,
-      poll: message.poll ? { question: message.poll.question.text } : null,
-    }
+      const discord = {
+        type: message.type,
+        flags: message.flags.toArray(),
+        createdAt: message.createdTimestamp,
+        editedAt: message.editedTimestamp,
+        pinned: message.pinned,
+        tts: message.tts,
+        author: { id: message.author.id, username: message.author.username },
+        content: message.content || null,
+        attachments: [...message.attachments.values()].map(a => ({
+          name: a.name,
+          contentType: a.contentType,
+          size: a.size,
+          duration: a.duration,
+          waveform: a.waveform,
+          width: a.width,
+          height: a.height,
+          description: a.description,
+        })),
+        embeds: message.embeds.map(e => e.toJSON()),
+        stickers: [...message.stickers.values()].map(s => ({ name: s.name, format: s.format })),
+        reference: message.reference,
+        poll: message.poll ? { question: message.poll.question.text } : null,
+      }
 
-    opts.queue.push({
-      type: "message",
-      source: "discord",
-      content: content.length > 0 ? content : null,
-      channelId: message.channel.id,
-      metadata: { userId: message.author.id, username: message.author.username, discord },
-      timestamp: Date.now(),
-    })
+      opts.queue.push({
+        type: "message",
+        source: "discord",
+        content: content.length > 0 ? content : null,
+        channelId: message.channel.id,
+        metadata: { userId: message.author.id, username: message.author.username, discord },
+        timestamp: Date.now(),
+      })
+    } catch (err) {
+      console.error("error handling discord message:", err)
+    }
   })
 
   client.once("ready", async () => {
@@ -275,46 +250,4 @@ export function createDiscordChannel(opts: {
       client.destroy()
     },
   }
-}
-
-function splitMessage(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text]
-
-  const lines = text.split("\n")
-  const chunks: string[] = []
-  let current = ""
-  let inCodeBlock = false
-
-  for (const line of lines) {
-    const lineWithNewline = current ? "\n" + line : line
-
-    if (line.startsWith("```")) inCodeBlock = !inCodeBlock
-
-    // If adding this line would exceed the limit and we're not inside a code block,
-    // flush the current chunk and start a new one
-    if (current.length + lineWithNewline.length > maxLen && current && !inCodeBlock) {
-      chunks.push(current)
-      current = line
-    } else {
-      current += lineWithNewline
-    }
-  }
-
-  if (current) chunks.push(current)
-
-  // Fallback: if any chunk is still over the limit, hard-split it
-  const result: string[] = []
-  for (const chunk of chunks) {
-    if (chunk.length <= maxLen) {
-      result.push(chunk)
-    } else {
-      let remaining = chunk
-      while (remaining.length > 0) {
-        result.push(remaining.slice(0, maxLen))
-        remaining = remaining.slice(maxLen)
-      }
-    }
-  }
-
-  return result
 }

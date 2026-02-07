@@ -22,13 +22,5 @@ export async function createStatusBoard(): Promise<StatusBoardInstance> {
       state[agent] = status
       await setKv(STATUS_BOARD_KEY, state)
     },
-    format(): string {
-      const lines: string[] = []
-      for (const [name, s] of Object.entries(state)) {
-        const detail = s.detail ? ` — ${s.detail}` : ""
-        lines.push(`${name}: ${s.status}${detail}`)
-      }
-      return lines.join("\n")
-    },
   }
 }

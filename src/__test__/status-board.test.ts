@@ -36,11 +36,5 @@ describe("StatusBoard", () => {
     expect(stored.conversation).toEqual({ status: "running", detail: "responding" })
   })
 
-  test("format returns human-readable string", async () => {
-    const board = await createStatusBoard()
-    await board.update("heartbeat", { status: "running", detail: "writing a recipe" })
-    const text = board.format()
-    expect(text).toContain("conversation: idle")
-    expect(text).toContain("heartbeat: running — writing a recipe")
-  })
+
 })

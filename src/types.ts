@@ -22,5 +22,4 @@ export type StatusBoard = {
 export type StatusBoardInstance = {
   get(): StatusBoard
   update(agent: keyof StatusBoard, status: AgentStatus): Promise<void>
-  format(): string
 }

@@ -1,3 +1,5 @@
+process.env.TZ = "America/Los_Angeles"
+
 import { describe, test, expect } from "bun:test"
 import { formatLocalTime } from "../format-time"
 

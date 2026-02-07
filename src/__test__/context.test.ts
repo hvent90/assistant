@@ -179,7 +179,7 @@ describe("buildConversationContext", () => {
     expect(system!.content).toContain("writing a recipe")
   })
 
-  test("heartbeat signals become assistant messages", () => {
+  test("heartbeat signals become system messages", () => {
     const result = buildConversationContext({
       signals: [
         {
@@ -196,9 +196,8 @@ describe("buildConversationContext", () => {
       repoRoot: testRepoRoot,
     })
 
-    const assistantMsg = result.find((m) => m.role === "assistant")
-    expect(assistantMsg).toBeDefined()
-    expect(assistantMsg!.content).toContain("I should check in about the deadline")
+    const heartbeatMsg = result.find((m) => m.role === "system" && typeof m.content === "string" && m.content.includes("I should check in about the deadline"))
+    expect(heartbeatMsg).toBeDefined()
   })
 
   test("user signals before heartbeat signals", () => {
@@ -224,13 +223,13 @@ describe("buildConversationContext", () => {
       repoRoot: testRepoRoot,
     })
 
-    // Find indices of user and assistant messages (excluding system)
+    // Find indices of user message and heartbeat system message
     const userIdx = result.findIndex((m) => m.role === "user")
-    const assistantIdx = result.findIndex((m) => m.role === "assistant")
+    const heartbeatIdx = result.findIndex((m) => m.role === "system" && typeof m.content === "string" && m.content.includes("heartbeat thought"))
 
     expect(userIdx).toBeGreaterThan(-1)
-    expect(assistantIdx).toBeGreaterThan(-1)
-    expect(userIdx).toBeLessThan(assistantIdx)
+    expect(heartbeatIdx).toBeGreaterThan(-1)
+    expect(userIdx).toBeLessThan(heartbeatIdx)
   })
 })
 
@@ -243,7 +242,7 @@ describe("buildHeartbeatContext", () => {
   const testMemoriesDir = "/tmp/memories"
   const testRepoRoot = "/tmp/repo"
 
-  test("produces system + heartbeat prompt, no history", () => {
+  test("produces system prompt, heartbeat prompt, user tick, and current time", () => {
     const messages = buildHeartbeatContext({
       statusBoard: baseBoard,
       memory: noMemory,
@@ -254,8 +253,8 @@ describe("buildHeartbeatContext", () => {
     expect(messages[0]!.role).toBe("system")
     const userMsg = messages.find((m) => m.role === "user")
     expect(userMsg!.content).toContain("heartbeat")
-    // No history messages — only system and user
-    expect(messages).toHaveLength(2)
+    // system prompt + heartbeat prompt (system) + user tick + current time (system)
+    expect(messages).toHaveLength(4)
   })
 
   test("includes skills prompt in system message", () => {

@@ -16,6 +16,10 @@ const DISCORD_ALLOWED_USERNAME = process.env.DISCORD_ALLOWED_USERNAME
 const MEMORIES_DIR = join(import.meta.dir, "../memories")
 
 async function main() {
+  process.on("unhandledRejection", (err) => {
+    console.error("unhandled rejection:", err)
+  })
+
   console.log("assistant starting...")
 
   // Initialize and verify DB connection
@@ -71,23 +75,16 @@ async function main() {
   console.log("scheduler ready (polling every 60s)")
 
   // Graceful shutdown
-  process.on("SIGINT", async () => {
+  const shutdown = async () => {
     console.log("shutting down...")
     heartbeat.stop()
     scheduler.stop()
     discord.destroy()
     await shutdownDb()
     process.exit(0)
-  })
-
-  process.on("SIGTERM", async () => {
-    console.log("shutting down...")
-    heartbeat.stop()
-    scheduler.stop()
-    discord.destroy()
-    await shutdownDb()
-    process.exit(0)
-  })
+  }
+  process.on("SIGINT", shutdown)
+  process.on("SIGTERM", shutdown)
 
   console.log("assistant is running")
 }
