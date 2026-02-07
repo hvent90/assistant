@@ -24,9 +24,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+REMINDCTL="$(command -v remindctl 2>/dev/null || echo /opt/homebrew/bin/remindctl)"
+
 if [ -n "$OUTFILE" ]; then
-  /opt/homebrew/bin/remindctl "${ARGS[@]}" > "$OUTFILE" 2>&1
+  "$REMINDCTL" "${ARGS[@]}" > "$OUTFILE" 2>&1
   echo $? > "$DONEFILE"
 else
-  exec /opt/homebrew/bin/remindctl "${ARGS[@]}"
+  exec "$REMINDCTL" "${ARGS[@]}"
 fi
