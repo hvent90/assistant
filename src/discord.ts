@@ -103,14 +103,37 @@ export function createDiscordChannel(opts: {
       // Non-image attachments: skip for now
     }
 
-    if (content.length === 0) return
+    const discord = {
+      type: message.type,
+      flags: message.flags.toArray(),
+      createdAt: message.createdTimestamp,
+      editedAt: message.editedTimestamp,
+      pinned: message.pinned,
+      tts: message.tts,
+      author: { id: message.author.id, username: message.author.username },
+      content: message.content || null,
+      attachments: [...message.attachments.values()].map(a => ({
+        name: a.name,
+        contentType: a.contentType,
+        size: a.size,
+        duration: a.duration,
+        waveform: a.waveform,
+        width: a.width,
+        height: a.height,
+        description: a.description,
+      })),
+      embeds: message.embeds.map(e => e.toJSON()),
+      stickers: [...message.stickers.values()].map(s => ({ name: s.name, format: s.format })),
+      reference: message.reference,
+      poll: message.poll ? { question: message.poll.question.text } : null,
+    }
 
     opts.queue.push({
       type: "message",
       source: "discord",
-      content,
+      content: content.length > 0 ? content : null,
       channelId: message.channel.id,
-      metadata: { userId: message.author.id, username: message.author.username },
+      metadata: { userId: message.author.id, username: message.author.username, discord },
       timestamp: Date.now(),
     })
   })

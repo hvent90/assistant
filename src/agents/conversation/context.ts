@@ -59,6 +59,18 @@ export function buildConversationContext({ signals, history, statusBoard, memory
     })
   }
 
+  // Discord message envelope (ephemeral — not persisted to history)
+  const discordEnvelopes = signals
+    .filter(s => s.metadata?.discord)
+    .map(s => s.metadata!.discord)
+
+  if (discordEnvelopes.length > 0) {
+    messages.push({
+      role: "system",
+      content: `The user sent ${discordEnvelopes.length} message(s) via Discord.\n\nRaw message envelopes:\n${JSON.stringify(discordEnvelopes, null, 2)}`,
+    })
+  }
+
   // Heartbeat thought last — framed so the conversation agent knows what to do with it
   if (heartbeatParts.length > 0) {
     messages.push({
