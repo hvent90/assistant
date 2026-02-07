@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { createSignalQueue } from "./queue"
+import { createSignalQueue } from "../queue"
 
 describe("SignalQueue", () => {
   test("drain returns empty array when queue is empty", () => {

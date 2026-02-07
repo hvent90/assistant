@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { createStatusBoard } from "./status-board"
-import { initDb, shutdown, getKv } from "./db"
+import { createStatusBoard } from "../status-board"
+import { initDb, shutdown, getKv } from "../db"
 
 const TEST_DB = "postgres://assistant:assistant@localhost:5434/assistant"
 const STATUS_BOARD_KEY = "status_board"

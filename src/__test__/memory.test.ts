@@ -1,9 +1,9 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
-import { readMemoryFiles } from "./memory"
+import { readMemoryFiles } from "../memory"
 import { mkdir, writeFile, rm } from "node:fs/promises"
 import { join } from "node:path"
 
-const TEST_DIR = join(import.meta.dir, "../.test-memories")
+const TEST_DIR = join(import.meta.dir, "../../.test-memories")
 
 describe("readMemoryFiles", () => {
   beforeEach(async () => {

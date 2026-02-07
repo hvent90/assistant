@@ -1,7 +1,4 @@
-import type { SignalQueue } from "../../queue"
 import { spawnConversationRun, type ConversationRunOpts } from "./run"
-
-export type { ConversationRunOpts } from "./run"
 
 export function startConversationAgent(opts: ConversationRunOpts) {
   const { queue } = opts
