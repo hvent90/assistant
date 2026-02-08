@@ -48,8 +48,15 @@ function toGraphEvent(raw: Record<string, unknown>): GraphEvent | null {
 /**
  * Hook that streams live events from an active session via SSE,
  * building a Graph incrementally with reduceEvent() and RAF batching.
+ *
+ * Accepts an optional initialGraph (from REST) so streaming appends
+ * to existing conversation history rather than starting empty.
  */
-export function useSessionStream(sessionId: number | null, active: boolean): UseSessionStreamResult {
+export function useSessionStream(
+  sessionId: number | null,
+  active: boolean,
+  initialGraph?: Graph | null,
+): UseSessionStreamResult {
   const [graph, setGraph] = useState<Graph | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
 
@@ -57,6 +64,16 @@ export function useSessionStream(sessionId: number | null, active: boolean): Use
   const graphRef = useRef<Graph>(createGraph())
   const pendingEvents = useRef<GraphEvent[]>([])
   const rafId = useRef<number>(0)
+  const initialGraphRef = useRef<Graph | null>(null)
+  initialGraphRef.current = initialGraph ?? null
+
+  // If REST data arrives while already streaming with an empty graph, seed it in
+  useEffect(() => {
+    if (isStreaming && initialGraph && graphRef.current.nodes.size === 0) {
+      graphRef.current = initialGraph
+      setGraph(initialGraph)
+    }
+  }, [initialGraph, isStreaming])
 
   const flushEvents = useCallback(() => {
     rafId.current = 0
@@ -73,15 +90,16 @@ export function useSessionStream(sessionId: number | null, active: boolean): Use
 
   useEffect(() => {
     if (!active || sessionId === null) {
-      setGraph(null)
+      // Don't null the graph — keep last state for smooth transition back to REST
       setIsStreaming(false)
       return
     }
 
-    // Reset state for new stream
-    graphRef.current = createGraph()
+    // Seed from REST history if available, otherwise start empty
+    const seed = initialGraphRef.current ?? createGraph()
+    graphRef.current = seed
     pendingEvents.current = []
-    setGraph(null)
+    setGraph(seed.nodes.size > 0 ? seed : null)
     setIsStreaming(true)
 
     const baseUrl = (import.meta as any).env?.VITE_BACKEND_URL ?? ""

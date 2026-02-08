@@ -84,6 +84,20 @@ async function startListening(): Promise<void> {
 
 startListening().catch((err) => console.error("Failed to start LISTEN:", err))
 
+// --- SSE keepalive ---
+// Send a comment every 30s to prevent idle timeout on all SSE connections
+setInterval(() => {
+  const keepalive = encoder.encode(": keepalive\n\n")
+  for (const set of sessionStreams.values()) {
+    for (const ctrl of set) {
+      try { ctrl.enqueue(keepalive) } catch { /* disconnected */ }
+    }
+  }
+  for (const ctrl of feedStreams) {
+    try { ctrl.enqueue(keepalive) } catch { /* disconnected */ }
+  }
+}, 30_000)
+
 // --- SSE headers ---
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
@@ -283,6 +297,7 @@ async function handleApi(url: URL): Promise<Response> {
 
 Bun.serve({
   port: PORT,
+  idleTimeout: 255, // max value — SSE connections are long-lived
   async fetch(req) {
     const url = new URL(req.url)
 

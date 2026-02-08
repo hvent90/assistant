@@ -55,14 +55,25 @@ function App() {
   // Subscribe to the sidebar lifecycle feed
   const { activeSessions, feedEvent } = useSessionFeed()
 
-  // Refetch session list when a feed event arrives
+  // Refetch session list and active session detail when a feed event arrives
   useEffect(() => {
     if (!feedEvent || agent === "scheduled") return
     fetch(`/api/sessions?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: Session[]) => setSessions(data))
       .catch(() => {})
-  }, [feedEvent, agent])
+    // If the event is for the currently viewed session, refetch detail
+    // to pick up any just-persisted messages (e.g. user message before streaming starts)
+    if (feedEvent.type === "session_start" && feedEvent.sessionId === activeId) {
+      fetch(`/api/sessions/${activeId}?agent=${agent}`)
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+        .then((data: SessionDetail) => {
+          setRestGraph(nodesToGraph(data.nodes))
+          setTriggeredBy(data.triggeredBy ?? null)
+        })
+        .catch(() => {})
+    }
+  }, [feedEvent, agent, activeId])
 
   // Determine if the currently selected session is live
   const selectedSession = sessions.find((s) => s.id === activeId)
@@ -72,10 +83,30 @@ function App() {
   const { graph: streamGraph, isStreaming } = useSessionStream(
     isSessionActive ? activeId : null,
     isSessionActive,
+    restGraph,
   )
 
-  // Use streaming graph if available, otherwise REST graph
-  const graph = isSessionActive ? streamGraph : restGraph
+  // Use streaming graph only when session is active, otherwise REST graph
+  const graph = isSessionActive ? (streamGraph ?? restGraph) : restGraph
+
+  // When streaming ends, immediately preserve the stream graph as rest graph
+  // so there's no gap when isSessionActive flips to false, then refetch for canonical state
+  const prevStreaming = useRef(false)
+  useEffect(() => {
+    if (prevStreaming.current && !isStreaming && activeId !== null) {
+      if (streamGraph) {
+        setRestGraph(streamGraph)
+      }
+      fetch(`/api/sessions/${activeId}?agent=${agent}`)
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+        .then((data: SessionDetail) => {
+          setRestGraph(nodesToGraph(data.nodes))
+          setTriggeredBy(data.triggeredBy ?? null)
+        })
+        .catch(() => {})
+    }
+    prevStreaming.current = isStreaming
+  }, [isStreaming, activeId, agent, streamGraph])
 
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
@@ -83,10 +114,7 @@ function App() {
     setTriggeredBy(null)
     window.location.hash = `#/${agent}/${id}`
 
-    // Check if this session is active (live) — if so, streaming hook handles it
-    const session = sessions.find((s) => s.id === id)
-    if (session?.active) return
-
+    // Always fetch REST data (provides history for streaming to build on)
     fetch(`/api/sessions/${id}?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: SessionDetail) => {
@@ -94,7 +122,7 @@ function App() {
         setTriggeredBy(data.triggeredBy ?? null)
       })
       .catch((err) => setError(err.message))
-  }, [agent, sessions])
+  }, [agent])
 
   // Fetch sessions when agent changes
   useEffect(() => {

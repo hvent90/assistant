@@ -26,7 +26,7 @@ export async function collectAgentOutput(
     graph = reduceEvent(graph, graphEvent)
     onEvent?.(event, graph)
     if (sessionId != null) {
-      publishEvent(sessionId, event).catch(() => {})
+      await publishEvent(sessionId, event).catch(() => {})
     }
   }
 
