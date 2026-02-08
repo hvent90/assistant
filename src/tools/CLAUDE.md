@@ -12,11 +12,14 @@ See `index.ts` for exports:
 
 ## Dependencies
 
-- `db/` — `insertScheduledTask` for the schedule tool
-- `queue` (SignalQueue) — injected into `createSpeakTool`
-- `format-time` — human-readable timestamps in schedule confirmations
+- **Depends on:** `db/` (`insertScheduledTask`), `queue` (SignalQueue, injected into `createSpeakTool`), `format-time`
+- **Used by:** `agents/conversation/`, `agents/heartbeat/`
 
-## Notes
+## Key Concepts
 
 - `speak` sends a *thought* (context for the conversation agent), not a user-facing message. The conversation agent decides phrasing.
 - `schedule` parses natural-language dates via `new Date()` — only ISO-ish formats are reliable.
+
+## Testing
+
+Tests in `__test__/`. Run: `bun test src/tools/__test__/`

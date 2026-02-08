@@ -16,6 +16,10 @@ podman compose -f infra/docker-compose.yml up -d   # Start
 podman compose -f infra/docker-compose.yml down     # Stop
 ```
 
+## Dependencies
+
+- **Used by:** `src/db/`
+
 Connection: `postgres://assistant:assistant@localhost:5434/assistant`
 
 ```bash

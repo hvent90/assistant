@@ -14,6 +14,10 @@ bun run viewer:build     # Build to dist/
 bun run viewer:serve     # Production server (port 5100)
 ```
 
+## Dependencies
+
+- **Depends on:** `src/db/` (`server.ts` queries sessions, messages, scheduled_tasks)
+
 ## Structure
 
 - `server.ts` — API endpoints (`/api/sessions`, `/api/scheduled-tasks`, `/api/heartbeat-status`)

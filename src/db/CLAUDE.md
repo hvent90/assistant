@@ -16,4 +16,10 @@ See `index.ts` — exports `initDb`, `ping`, `shutdown`, message CRUD (`appendMe
 ## Dependencies
 
 - **Depends on:** `pg` (PostgreSQL driver), `llm-gateway` (Node type for message content)
-- **Used by:** nearly everything — `discord`, `scheduling`, `tools`, `agents`, `main.ts`
+- **Used by:** nearly everything — `discord/`, `scheduling/`, `tools/`, `agents/`, `main.ts`
+
+## Testing
+
+Tests in `__test__/`. Run: `bun test src/db/__test__/`
+
+Requires Postgres running (`podman compose -f infra/docker-compose.yml up -d`).

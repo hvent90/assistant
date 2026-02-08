@@ -15,6 +15,10 @@ See `index.ts` — exports `pollOnce` and `startScheduler`.
 
 ## Dependencies
 
-- **Depends on:** `db` (task queries, KV for last-poll timestamp)
+- **Depends on:** `db/` (task queries, KV for last-poll timestamp)
 - **Used by:** `src/main.ts`
 - **Related:** `src/tools/tools.ts` inserts tasks via `db.insertScheduledTask`
+
+## Testing
+
+Tests in `__test__/`. Run: `bun test src/scheduling/__test__/`

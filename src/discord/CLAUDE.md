@@ -4,7 +4,7 @@ Discord bot integration for DM-based conversations. Receives user messages (text
 
 ## Public API
 
-See `index.ts` — exports `createDiscordChannel`, render utilities (`renderViewNodes`, `splitMessage`), and `transcribeVoice`.
+See `index.ts` — exports `createDiscordChannel`, render utilities (`renderViewContent`, `renderViewNodes`, `splitMessage`), and `transcribeVoice`.
 
 ## Key Concepts
 
@@ -15,5 +15,9 @@ See `index.ts` — exports `createDiscordChannel`, render utilities (`renderView
 
 ## Dependencies
 
-- **Depends on:** `db` (session/KV persistence), `llm-gateway` (graph projection, view types), `src/queue` (signal queue)
-- **Used by:** `src/main.ts`, `src/agents/conversation/`
+- **Depends on:** `db/` (session/KV persistence), `llm-gateway` (graph projection, view types), `src/queue` (signal queue)
+- **Used by:** `src/main.ts`, `agents/conversation/`
+
+## Testing
+
+Tests in `__test__/`. Run: `bun test src/discord/__test__/`

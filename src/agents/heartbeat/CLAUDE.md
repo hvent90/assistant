@@ -10,13 +10,14 @@ Periodic background agent that checks reminders, reads memory files, and proacti
 
 ## Dependencies
 
-- `context/` — `buildSystemPrompt`, `readMemoryFiles`, `collectAgentOutput`
-- `db/` — `createSession`, `appendMessage`, `getKv`/`setKv` for tick persistence
-- `tools/` — `readTool`, `writeTool`, `createSpeakTool`, `createScheduleTool`
-- `queue` (SignalQueue) — injected for `createSpeakTool`
-- `llm-gateway` — orchestrator, harness, skills
+- **Depends on:** `context/`, `db/`, `tools/`, `queue` (SignalQueue), `llm-gateway`
+- **Used by:** `src/main.ts`
 
-## Notes
+## Key Concepts
 
 - Last tick timestamp is persisted to Postgres KV (`heartbeat_last_tick_at`) so restarts don't skip or double-fire.
 - The heartbeat prompt instructs the agent to `ls` the memories dir and act on due reminders — skipping this check is treated as a failure.
+
+## Testing
+
+Tests in `__test__/`. Run: `bun test src/agents/heartbeat/__test__/`

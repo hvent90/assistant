@@ -13,9 +13,9 @@ See `index.ts` for exports:
 
 ## Dependencies
 
-- `llm-gateway` — `Graph`, `Node`, `Message` types and `createGraph`/`reduceEvent`
-- `format-time` — timestamp formatting in prompts
+- **Depends on:** `llm-gateway` (`Graph`, `Node`, `Message` types, `createGraph`/`reduceEvent`), `format-time`
+- **Used by:** `agents/conversation/`, `agents/heartbeat/`
 
-## Dependents
+## Testing
 
-- `agents/conversation/` and `agents/heartbeat/` both import all four exports
+Tests in `__test__/`. Run: `bun test src/context/__test__/`
