@@ -1,23 +1,14 @@
 # Discord Module
 
-Discord bot integration for DM-based conversations. Receives user messages (text, images, voice), pushes them onto the signal queue, and renders agent responses back as Discord messages with debounced streaming updates.
-
-## Public API
-
-See `index.ts` — exports `createDiscordChannel`, render utilities (`renderViewContent`, `renderViewNodes`, `splitMessage`), and `transcribeVoice`.
+DM-only Discord bot. Receives text, images, and voice messages; pushes them onto the signal queue; renders agent responses back with debounced streaming updates.
 
 ## Key Concepts
 
-- `createDiscordChannel` returns a `DiscordChannel` object: call `start()` to connect, `send()` for one-shot messages, `createStreamRenderer()` for live-updating agent output.
-- Incoming DMs are transformed into `SignalQueue` items (see `src/queue.ts`), not processed directly.
+- Incoming DMs become `SignalQueue` items (see `src/queue.ts`), not processed directly by this module.
 - The `/clear` slash command creates a new session via `db.createSession`.
 - Voice messages are transcribed locally via whisper-cpp (`transcribe.ts`). Requires `ffmpeg` and `whisper-cli` at `/opt/homebrew/bin/`.
-
-## Dependencies
-
-- **Depends on:** `db/` (session/KV persistence), `llm-gateway` (graph projection, view types), `src/queue` (signal queue)
-- **Used by:** `src/main.ts`, `agents/conversation/`
+- `createStreamRenderer()` debounces Discord API calls to avoid rate limits during streaming.
 
 ## Testing
 
-Tests in `__test__/`. Run: `bun test src/discord/__test__/`
+`bun test src/discord/__test__/`
