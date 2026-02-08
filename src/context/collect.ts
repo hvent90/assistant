@@ -1,6 +1,7 @@
 import { createGraph, reduceEvent } from "llm-gateway/packages/ai/client"
 import type { Graph, Node } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
+import { publishEvent } from "../db"
 
 type OrchestratorEvent = { agentId: string; event: ConsumerHarnessEvent }
 
@@ -16,6 +17,7 @@ function toGraphEvent(event: ConsumerHarnessEvent, agentId: string) {
 export async function collectAgentOutput(
   events: AsyncIterable<OrchestratorEvent>,
   onEvent?: (event: ConsumerHarnessEvent, graph: Graph) => void,
+  sessionId?: number,
 ): Promise<Node[]> {
   let graph: Graph = createGraph()
 
@@ -23,6 +25,9 @@ export async function collectAgentOutput(
     const graphEvent = toGraphEvent(event, agentId)
     graph = reduceEvent(graph, graphEvent)
     onEvent?.(event, graph)
+    if (sessionId != null) {
+      publishEvent(sessionId, event).catch(() => {})
+    }
   }
 
   return Array.from(graph.nodes.values()).filter((n) => !LIFECYCLE_KINDS.has(n.kind))

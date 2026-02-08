@@ -133,6 +133,20 @@ export async function updateTaskStatus(
   }
 }
 
+const PG_NOTIFY_MAX = 8000
+const PAYLOAD_OVERHEAD = 200 // room for JSON wrapper: {"sessionId":...,"event":...,"truncated":true}
+
+export async function publishEvent(sessionId: number, event: object): Promise<void> {
+  const full = JSON.stringify({ sessionId, event })
+  if (full.length <= PG_NOTIFY_MAX) {
+    await getPool().query("SELECT pg_notify('agent_events', $1)", [full])
+    return
+  }
+  // Payload too large — send a truncated marker so viewers know to fetch via REST
+  const truncated = JSON.stringify({ sessionId, event: { type: (event as { type?: string }).type ?? "unknown" }, truncated: true })
+  await getPool().query("SELECT pg_notify('agent_events', $1)", [truncated])
+}
+
 export async function shutdown() {
   await pool?.end()
   pool = null

@@ -20,6 +20,7 @@ interface SidebarProps {
   onSelect: (id: number) => void
   agent: Agent
   onAgentChange: (agent: Agent) => void
+  activeSessions?: Set<number>
   className?: string
 }
 
@@ -46,7 +47,7 @@ function formatDate(iso: string): string {
     d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
-export function Sidebar({ sessions, activeId, onSelect, agent, onAgentChange, className = "flex" }: SidebarProps) {
+export function Sidebar({ sessions, activeId, onSelect, agent, onAgentChange, activeSessions, className = "flex" }: SidebarProps) {
   const [heartbeatStatus, setHeartbeatStatus] = useState<HeartbeatStatus | null>(null)
 
   useEffect(() => {
@@ -107,7 +108,12 @@ export function Sidebar({ sessions, activeId, onSelect, agent, onAgentChange, cl
               s.id === activeId ? "bg-neutral-900" : ""
             }`}
           >
-            <div className="text-xs text-neutral-500">{formatDate(s.createdAt)}</div>
+            <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+              {activeSessions?.has(s.id) && (
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
+              )}
+              {formatDate(s.createdAt)}
+            </div>
             {s.preview && (
               <div className="mt-1 text-sm text-neutral-400 line-clamp-2">{s.preview}</div>
             )}

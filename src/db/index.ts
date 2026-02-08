@@ -10,6 +10,7 @@ export {
   insertScheduledTask,
   getPendingDueTasks,
   updateTaskStatus,
+  publishEvent,
   shutdown,
   type ScheduledTask,
 } from "./client"

@@ -112,7 +112,7 @@ export async function spawnConversationRun(opts: ConversationRunOpts, signals: S
     const viewerBase = process.env.VIEWER_BASE_URL
     const viewerPrefix = viewerBase ? `[view session](${viewerBase}/#/conversation/${sessionId})` : undefined
     const renderer = channelId ? discord.createStreamRenderer(channelId, { prefix: viewerPrefix }) : null
-    const nodes = await collectAgentOutput(orchestrator.events(), renderer?.onEvent)
+    const nodes = await collectAgentOutput(orchestrator.events(), renderer?.onEvent, sessionId)
     if (renderer) await renderer.flush()
 
     // Persist assistant response

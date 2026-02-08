@@ -47,7 +47,7 @@ export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: strin
       },
     })
 
-    const nodes = await collectAgentOutput(orchestrator.events())
+    const nodes = await collectAgentOutput(orchestrator.events(), undefined, sessionId)
 
     if (nodes.length > 0) {
       await appendMessage({

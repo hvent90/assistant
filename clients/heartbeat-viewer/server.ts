@@ -1,5 +1,6 @@
-import { Pool } from "pg"
+import { Pool, Client as PgClient } from "pg"
 import type { Node } from "llm-gateway/packages/ai/client"
+import type { ServerEvent } from "llm-gateway/packages/ai/client"
 import { join } from "path"
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
@@ -7,6 +8,90 @@ const PORT = Number(process.env.VIEWER_PORT) || 5100
 const DIST_DIR = join(import.meta.dir, "dist")
 
 const pool = new Pool({ connectionString: DATABASE_URL })
+
+// --- SSE infrastructure ---
+
+/** Active session IDs, updated by harness_start/harness_end notifications */
+const activeSessionIds = new Set<number>()
+
+/** Per-session SSE subscribers: sessionId → Set of stream controllers */
+const sessionStreams = new Map<number, Set<ReadableStreamDefaultController<Uint8Array>>>()
+
+/** Sidebar feed subscribers (lifecycle events only) */
+const feedStreams = new Set<ReadableStreamDefaultController<Uint8Array>>()
+
+const encoder = new TextEncoder()
+
+function sseWrite(controller: ReadableStreamDefaultController<Uint8Array>, data: unknown): void {
+  try {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+  } catch {
+    // Client disconnected, ignore
+  }
+}
+
+/** Persistent LISTEN connection for agent_events */
+async function startListening(): Promise<void> {
+  const client = new PgClient({ connectionString: DATABASE_URL })
+  await client.connect()
+  await client.query("LISTEN agent_events")
+
+  client.on("notification", (msg) => {
+    if (msg.channel !== "agent_events" || !msg.payload) return
+    let parsed: { sessionId: number; event: ServerEvent }
+    try {
+      parsed = JSON.parse(msg.payload)
+    } catch {
+      return
+    }
+
+    const { sessionId, event } = parsed
+
+    // Update active session tracking
+    if (event.type === "harness_start") {
+      activeSessionIds.add(sessionId)
+      for (const ctrl of feedStreams) {
+        sseWrite(ctrl, { type: "session_start", sessionId })
+      }
+    } else if (event.type === "harness_end") {
+      activeSessionIds.delete(sessionId)
+      for (const ctrl of feedStreams) {
+        sseWrite(ctrl, { type: "session_end", sessionId })
+      }
+    }
+
+    // Fan out to per-session stream subscribers
+    const subscribers = sessionStreams.get(sessionId)
+    if (subscribers) {
+      for (const ctrl of subscribers) {
+        sseWrite(ctrl, event)
+      }
+      // Close streams on harness_end
+      if (event.type === "harness_end") {
+        for (const ctrl of subscribers) {
+          try { ctrl.close() } catch { /* already closed */ }
+        }
+        sessionStreams.delete(sessionId)
+      }
+    }
+  })
+
+  client.on("error", (err) => {
+    console.error("LISTEN connection error:", err)
+    setTimeout(startListening, 3000)
+  })
+}
+
+startListening().catch((err) => console.error("Failed to start LISTEN:", err))
+
+// --- SSE headers ---
+const SSE_HEADERS = {
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache",
+  Connection: "keep-alive",
+} as const
+
+// --- Existing types ---
 
 interface SessionRow {
   session_id: number
@@ -28,7 +113,55 @@ function extractPreview(nodes: Node[]): string {
   return ""
 }
 
+function handleSSEStream(url: URL, req: Request): Response | null {
+  // --- SSE: Per-session stream ---
+  const streamMatch = url.pathname.match(/^\/api\/sessions\/(\d+)\/stream$/)
+  if (streamMatch) {
+    const sessionId = Number(streamMatch[1])
+    let savedController: ReadableStreamDefaultController<Uint8Array>
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        savedController = controller
+        if (!sessionStreams.has(sessionId)) {
+          sessionStreams.set(sessionId, new Set())
+        }
+        sessionStreams.get(sessionId)!.add(controller)
+      },
+      cancel() {
+        const set = sessionStreams.get(sessionId)
+        if (set) {
+          set.delete(savedController)
+          if (set.size === 0) sessionStreams.delete(sessionId)
+        }
+      },
+    })
+
+    return new Response(stream, { headers: SSE_HEADERS })
+  }
+
+  // --- SSE: Sidebar lifecycle feed ---
+  if (url.pathname === "/api/sessions/feed") {
+    let savedController: ReadableStreamDefaultController<Uint8Array>
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        savedController = controller
+        feedStreams.add(controller)
+      },
+      cancel() {
+        feedStreams.delete(savedController)
+      },
+    })
+
+    return new Response(stream, { headers: SSE_HEADERS })
+  }
+
+  return null
+}
+
 async function handleApi(url: URL): Promise<Response> {
+  // --- REST: Session list ---
   if (url.pathname === "/api/sessions") {
     const agent = url.searchParams.get("agent") ?? "heartbeat"
 
@@ -43,6 +176,7 @@ async function handleApi(url: URL): Promise<Response> {
         id: r.session_id,
         createdAt: r.created_at.toISOString(),
         preview: extractPreview(r.content),
+        active: activeSessionIds.has(r.session_id),
       }))
       return Response.json(sessions)
     }
@@ -57,6 +191,7 @@ async function handleApi(url: URL): Promise<Response> {
       id: r.session_id,
       createdAt: r.created_at.toISOString(),
       preview: extractPreview(r.content),
+      active: activeSessionIds.has(r.session_id),
     }))
     return Response.json(sessions)
   }
@@ -152,6 +287,10 @@ Bun.serve({
     const url = new URL(req.url)
 
     if (url.pathname.startsWith("/api/")) {
+      // SSE endpoints must be handled synchronously (not async)
+      const sseResponse = handleSSEStream(url, req)
+      if (sseResponse) return sseResponse
+
       try {
         return await handleApi(url)
       } catch (err) {

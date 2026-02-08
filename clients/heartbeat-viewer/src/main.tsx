@@ -6,6 +6,8 @@ import { ConversationThread } from "./components/ConversationThread"
 import { ScheduledTasksView } from "./components/ScheduledTasksView"
 import type { ScheduledTask } from "./components/ScheduledTasksView"
 import { nodesToGraph } from "./graph"
+import { useSessionStream } from "./hooks/useSessionStream"
+import { useSessionFeed } from "./hooks/useSessionFeed"
 import type { Graph, Node } from "llm-gateway/packages/ai/client"
 import "./index.css"
 
@@ -15,6 +17,7 @@ interface Session {
   id: number
   createdAt: string
   preview: string
+  active: boolean
 }
 
 interface TriggeredBy {
@@ -43,25 +46,55 @@ function App() {
   const [agent, setAgent] = useState<Agent>(initial.agent)
   const [sessions, setSessions] = useState<Session[]>([])
   const [activeId, setActiveId] = useState<number | null>(initial.sessionId)
-  const [graph, setGraph] = useState<Graph | null>(null)
+  const [restGraph, setRestGraph] = useState<Graph | null>(null)
   const [error, setError] = useState<string | null>(null)
   const suppressHashUpdate = useRef(false)
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([])
   const [triggeredBy, setTriggeredBy] = useState<TriggeredBy | null>(null)
 
+  // Subscribe to the sidebar lifecycle feed
+  const { activeSessions, feedEvent } = useSessionFeed()
+
+  // Refetch session list when a feed event arrives
+  useEffect(() => {
+    if (!feedEvent || agent === "scheduled") return
+    fetch(`/api/sessions?agent=${agent}`)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((data: Session[]) => setSessions(data))
+      .catch(() => {})
+  }, [feedEvent, agent])
+
+  // Determine if the currently selected session is live
+  const selectedSession = sessions.find((s) => s.id === activeId)
+  const isSessionActive = selectedSession?.active ?? activeSessions.has(activeId!)
+
+  // Stream hook — only active when viewing a live session
+  const { graph: streamGraph, isStreaming } = useSessionStream(
+    isSessionActive ? activeId : null,
+    isSessionActive,
+  )
+
+  // Use streaming graph if available, otherwise REST graph
+  const graph = isSessionActive ? streamGraph : restGraph
+
   const loadSession = useCallback((id: number) => {
     setActiveId(id)
-    setGraph(null)
+    setRestGraph(null)
     setTriggeredBy(null)
     window.location.hash = `#/${agent}/${id}`
+
+    // Check if this session is active (live) — if so, streaming hook handles it
+    const session = sessions.find((s) => s.id === id)
+    if (session?.active) return
+
     fetch(`/api/sessions/${id}?agent=${agent}`)
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((data: SessionDetail) => {
-        setGraph(nodesToGraph(data.nodes))
+        setRestGraph(nodesToGraph(data.nodes))
         setTriggeredBy(data.triggeredBy ?? null)
       })
       .catch((err) => setError(err.message))
-  }, [agent])
+  }, [agent, sessions])
 
   // Fetch sessions when agent changes
   useEffect(() => {
@@ -98,13 +131,13 @@ function App() {
         setAgent(parsed.agent)
         setSessions([])
         setActiveId(parsed.sessionId)
-        setGraph(null)
+        setRestGraph(null)
       } else if (parsed.sessionId !== activeId) {
         if (parsed.sessionId !== null) {
           loadSession(parsed.sessionId)
         } else {
           setActiveId(null)
-          setGraph(null)
+          setRestGraph(null)
         }
       }
     }
@@ -124,14 +157,14 @@ function App() {
     setSessions([])
     setScheduledTasks([])
     setActiveId(null)
-    setGraph(null)
+    setRestGraph(null)
     setAgent(newAgent)
     window.location.hash = `#/${newAgent}`
   }, [agent])
 
   const handleBack = useCallback(() => {
     setActiveId(null)
-    setGraph(null)
+    setRestGraph(null)
     window.location.hash = `#/${agent}`
   }, [agent])
 
@@ -143,6 +176,7 @@ function App() {
         onSelect={loadSession}
         agent={agent}
         onAgentChange={handleAgentChange}
+        activeSessions={activeSessions}
         className={agent === "scheduled" ? "hidden md:flex" : activeId !== null ? "hidden md:flex" : "flex"}
       />
       <main className={`flex-1 flex-col overflow-y-auto p-4 ${agent === "scheduled" ? "flex" : activeId === null ? "hidden md:flex" : "flex"}`}>
@@ -166,6 +200,12 @@ function App() {
           >
             Triggered by scheduled task #{triggeredBy.id}: {triggeredBy.prompt.length > 80 ? triggeredBy.prompt.slice(0, 80) + "..." : triggeredBy.prompt}
           </a>
+        )}
+        {isStreaming && (
+          <div className="mb-3 flex items-center gap-2 text-sm text-green-400">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-400" />
+            live
+          </div>
         )}
         {agent === "scheduled" ? (
           <ScheduledTasksView tasks={scheduledTasks} />
