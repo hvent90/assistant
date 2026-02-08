@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { createScheduleTool } from "../tools"
-import { initDb, shutdown, ping, getPendingDueTasks } from "../db"
+import { createScheduleTool } from "../../tools"
+import { initDb, shutdown, ping, getPendingDueTasks } from "../../db"
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
 

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
-import { readMemoryFiles } from "../memory"
+import { readMemoryFiles } from ".."
 import { mkdir, writeFile, rm } from "node:fs/promises"
 import { join } from "node:path"
 

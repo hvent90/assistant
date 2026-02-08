@@ -15,31 +15,33 @@ Background AI assistant that runs autonomously, responds to user messages via Di
 
 ## Development Principles
 
-- TDD with failure loops - write failing test first, then implement
-- Tests must only output on failure (quiet success, loud failure)
-- No mocks - use real integrations in tests
-- Refactor freely, no backwards compatibility shims
-- No re-export shims - when code moves, update all import sites to point to the new location instead of leaving behind proxy re-exports
-- Ask questions early - liberally use AskUserQuestion when requirements are unclear or ambiguous
+- TDD with failure loops — write failing test first, then implement
+- Tests: quiet success, loud failure. No mocks — use real integrations
+- Refactor freely, no backwards compatibility shims or re-export shims
+- Ask questions early via AskUserQuestion when requirements are unclear
 
-## Project Structure
+## Module Map
 
-- `src/` - Core application code
-  - `src/agents/{name}/` - Agent directories with `index.ts`, `run.ts`, `context.ts`
-  - `src/__test__/` - Tests for shared modules
-- `infra/` - Docker compose, SQL schemas
-- `docs/` - Design docs and implementation plans
-- Tests live in `__test__/` directories co-located with source (e.g., `src/__test__/db.test.ts`)
+- `src/discord/` — Discord bot, message rendering, voice transcription
+- `src/db/` — PostgreSQL data access layer
+- `src/scheduling/` — Scheduled task polling and execution
+- `src/tools/` — LLM tool definitions (read/write files, schedule, speak)
+- `src/context/` — System prompt building, memory, projections
+- `src/agents/conversation/` — Conversation agent (responds to Discord DMs)
+- `src/agents/heartbeat/` — Heartbeat agent (proactive background work)
+- `clients/heartbeat-viewer/` — Web UI for heartbeat data
+- `infra/` — Docker compose, SQL schemas
+- `src/` root — shared primitives: `types.ts`, `format-time.ts`, `queue.ts`, `status-board.ts`
+
+Each domain folder has its own CLAUDE.md with detailed context. Tests live in co-located `__test__/` directories.
 
 ## Commands
 
 ```bash
-bun install
+bun test                 # Run all tests
 bun run dev              # Start with --watch
 bun run start            # Start without watch
-bun test                 # Run all tests
 bun run pm2:start        # Start via pm2
-bun run pm2:logs         # Tail pm2 logs
 ```
 
 ## Infrastructure
@@ -48,38 +50,12 @@ bun run pm2:logs         # Tail pm2 logs
 podman compose -f infra/docker-compose.yml up -d   # Start Postgres
 ```
 
-Postgres runs on port 5434. Connection: `postgres://assistant:assistant@localhost:5434/assistant`
-
-Query the database via podman:
-
-```bash
-podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT ..."
-```
-
-## Reference Docs
-
-- `docs/writing-a-good-claude-md.md` - Principles for maintaining this file (progressive disclosure, brevity, no linter rules)
+Postgres on port 5434. Connection: `postgres://assistant:assistant@localhost:5434/assistant`. See `infra/CLAUDE.md` for details.
 
 ## Bash Tool Pitfalls
 
-- Never put newlines in the middle of a command — Bash interprets them as command separators, which silently breaks the command and can hang on interactive subprocesses. Use single-line commands or `\` for continuation.
+Never put newlines in the middle of a command — Bash interprets them as command separators. Use single-line commands or `\` for continuation.
 
 ## Web Search via Claude CLI
 
-When you need current information from the web, invoke the Claude CLI tool via bash:
-
-```bash
-claude -p "your search query here"
-```
-
-**Usage notes:**
-- `-p` flag runs in print-only mode (non-interactive, exits after response)
-- Use `--timeout 60` for complex queries that may take longer
-- Default timeout 30s works for simple queries
-- Output is text format (can be parsed directly by LLM)
-- Can access current web content, news, and real-time information
-
-**Example:**
-```bash
-claude -p --timeout 60 "latest news about AI observability startups"
-```
+`claude -p "query"` — print-only mode, non-interactive, 30s default. Use `--timeout 60` for complex queries.

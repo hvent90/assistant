@@ -3,10 +3,10 @@ import { createGraph, projectThread } from "llm-gateway/packages/ai/client"
 import type { Graph } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { ContentPart } from "llm-gateway/packages/ai/types"
-import type { SignalQueue } from "./queue"
-import { getKv, setKv, createSession } from "./db"
+import type { SignalQueue } from "../queue"
+import { getKv, setKv, createSession } from "../db"
 import { transcribeVoice } from "./transcribe"
-import { renderViewNodes, splitMessage } from "./discord-util"
+import { renderViewNodes, splitMessage } from "./util"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
 

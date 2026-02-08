@@ -1,6 +1,6 @@
-import type { StatusBoard } from "./types"
+import type { StatusBoard } from "../types"
 import type { MemoryFiles } from "./memory"
-import { formatLocalTime } from "./format-time"
+import { formatLocalTime } from "../format-time"
 
 export function buildSystemPrompt(statusBoard: StatusBoard, memory: MemoryFiles, memoriesDir: string, repoRoot: string, skillsPrompt?: string): string {
   const now = new Date()

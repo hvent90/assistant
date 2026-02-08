@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test"
-import { buildConversationContext } from "../agents/conversation/context"
-import { signalToPersisted } from "../agents/conversation/run"
-import type { StatusBoard } from "../types"
+import { buildConversationContext } from "../../conversation/context"
+import { signalToPersisted } from "../../conversation/run"
+import type { StatusBoard } from "../../../types"
 import type { Node } from "llm-gateway/packages/ai/client"
 
 const emptyMemory = { soul: null, user: null, instructions: null }

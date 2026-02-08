@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeAll } from "bun:test"
-import { buildSystemPrompt } from "../context"
-import { formatLocalTime } from "../format-time"
-import type { StatusBoard } from "../types"
-import type { MemoryFiles } from "../memory"
+import { buildSystemPrompt } from ".."
+import { formatLocalTime } from "../../format-time"
+import type { StatusBoard } from "../../types"
+import type { MemoryFiles } from ".."
 
 beforeAll(() => {
   process.env.TZ = "UTC"

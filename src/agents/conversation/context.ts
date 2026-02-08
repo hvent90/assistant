@@ -1,9 +1,8 @@
 import type { Message } from "llm-gateway/packages/ai/types"
 import type { Signal, StatusBoard } from "../../types"
-import type { MemoryFiles } from "../../memory"
+import type { MemoryFiles } from "../../context"
 import type { Node } from "llm-gateway/packages/ai/client"
-import { buildSystemPrompt } from "../../context"
-import { nodesToMessages } from "../../projection"
+import { buildSystemPrompt, nodesToMessages } from "../../context"
 import { formatLocalTime } from "../../format-time"
 
 type ConversationContextInput = {

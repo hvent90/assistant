@@ -1,6 +1,6 @@
 import type { Message } from "llm-gateway/packages/ai/types"
 import type { StatusBoard } from "../../types"
-import type { MemoryFiles } from "../../memory"
+import type { MemoryFiles } from "../../context"
 import { buildSystemPrompt } from "../../context"
 import { formatLocalTime } from "../../format-time"
 

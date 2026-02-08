@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { splitMessage, renderViewContent, renderViewNodes } from "../discord-util"
+import { splitMessage, renderViewContent, renderViewNodes } from "../util"
 import type { ViewNode, ViewContent } from "llm-gateway/packages/ai/client"
 
 function makeNode(overrides: Partial<ViewNode> & { content: ViewContent }): ViewNode {

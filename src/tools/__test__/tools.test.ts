@@ -1,6 +1,6 @@
 import { describe, test, expect, afterAll } from "bun:test"
-import { readTool, writeTool, createSpeakTool } from "../tools"
-import { createSignalQueue } from "../queue"
+import { readTool, writeTool, createSpeakTool } from ".."
+import { createSignalQueue } from "../../queue"
 import { join } from "path"
 import { tmpdir } from "os"
 import { unlink, rm } from "fs/promises"

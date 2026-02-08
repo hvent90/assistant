@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage, ensureCurrentSession } from "../db"
+import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage, ensureCurrentSession } from ".."
 
 const TEST_DB = "postgres://assistant:assistant@localhost:5434/assistant"
 

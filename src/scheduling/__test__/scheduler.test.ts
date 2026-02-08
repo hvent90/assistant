@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, ping, insertScheduledTask } from "../db"
-import { pollOnce } from "../scheduler"
+import { initDb, shutdown, ping, insertScheduledTask } from "../../db"
+import { pollOnce } from ".."
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
 const PREFIX = "sched-test:"
@@ -59,7 +59,7 @@ describe("scheduler pollOnce", () => {
       return 0
     })
 
-    const { getPendingDueTasks } = await import("../db")
+    const { getPendingDueTasks } = await import("../../db")
     const tasks = await getPendingDueTasks(new Date())
     const found = tasks.find((t) => t.id === id)
     expect(found).toBeDefined()

@@ -1,4 +1,4 @@
-import { getPendingDueTasks, updateTaskStatus, setKv, type ScheduledTask } from "./db"
+import { getPendingDueTasks, updateTaskStatus, setKv, type ScheduledTask } from "../db"
 
 const POLL_INTERVAL_MS = 60_000
 const LAST_POLL_KEY = "scheduler_last_poll_at"

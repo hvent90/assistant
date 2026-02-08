@@ -5,7 +5,7 @@ import { createStatusBoard } from "./status-board"
 import { createDiscordChannel } from "./discord"
 import { startConversationAgent } from "./agents/conversation"
 import { startHeartbeatAgent, spawnHeartbeatRun } from "./agents/heartbeat"
-import { startScheduler } from "./scheduler"
+import { startScheduler } from "./scheduling"
 import { initDb, ping, shutdown as shutdownDb } from "./db"
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!

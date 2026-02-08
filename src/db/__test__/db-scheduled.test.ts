@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, insertScheduledTask, getPendingDueTasks, updateTaskStatus, ping } from "../db"
+import { initDb, shutdown, insertScheduledTask, getPendingDueTasks, updateTaskStatus, ping } from ".."
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
 const PREFIX = "db-sched-test:"

@@ -2,9 +2,9 @@ import { z } from "zod"
 import { readFile, writeFile, mkdir } from "fs/promises"
 import { dirname } from "path"
 import type { ToolDefinition } from "llm-gateway/packages/ai/types"
-import type { SignalQueue } from "./queue"
-import { insertScheduledTask } from "./db"
-import { formatLocalTime } from "./format-time"
+import type { SignalQueue } from "../queue"
+import { insertScheduledTask } from "../db"
+import { formatLocalTime } from "../format-time"
 
 const readSchema = z.object({
   path: z.string().describe("Absolute path to the file to read"),
