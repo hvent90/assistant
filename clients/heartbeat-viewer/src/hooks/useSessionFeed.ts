@@ -5,6 +5,11 @@ export interface FeedEvent {
   sessionId: number
 }
 
+interface InitialEvent {
+  type: "initial"
+  activeSessions: number[]
+}
+
 export function useSessionFeed() {
   const [activeSessions, setActiveSessions] = useState<Set<number>>(new Set())
   const [feedEvent, setFeedEvent] = useState<FeedEvent | null>(null)
@@ -15,10 +20,16 @@ export function useSessionFeed() {
     esRef.current = es
 
     es.onmessage = (msg) => {
-      let data: FeedEvent
+      let data: FeedEvent | InitialEvent
       try {
         data = JSON.parse(msg.data)
       } catch {
+        return
+      }
+
+      // Seed active sessions from server on initial connect
+      if (data.type === "initial") {
+        setActiveSessions(new Set((data as InitialEvent).activeSessions))
         return
       }
 
@@ -36,7 +47,7 @@ export function useSessionFeed() {
         })
       }
 
-      setFeedEvent(data)
+      setFeedEvent(data as FeedEvent)
     }
 
     return () => {

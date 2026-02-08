@@ -1,16 +1,6 @@
 import { useState } from "react"
-
-export interface ScheduledTask {
-  id: number
-  fireAt: string
-  prompt: string
-  status: string
-  attempts: number
-  maxAttempts: number
-  lastError: string | null
-  sessionId: number | null
-  createdAt: string
-}
+import type { ScheduledTask } from "../types"
+import { formatDate } from "../utils"
 
 type Filter = "active" | "completed" | "all"
 
@@ -29,13 +19,6 @@ function StatusBadge({ status }: { status: string }) {
       {status}
     </span>
   )
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " · " +
-    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
 function TaskCard({ task }: { task: ScheduledTask }) {

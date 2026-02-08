@@ -5,3 +5,5 @@ logs/
 memories/*
 !memories/instructions.md
 .agent/skills/google-calendar/client_secret_*.json
+clients/heartbeat-viewer/dist/
+.idea/

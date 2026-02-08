@@ -1,12 +1,6 @@
 import { useState, useEffect } from "react"
-
-interface Session {
-  id: number
-  createdAt: string
-  preview: string
-}
-
-type Agent = "heartbeat" | "conversation" | "scheduled"
+import type { Agent, Session } from "../types"
+import { formatDate } from "../utils"
 
 interface HeartbeatStatus {
   lastTickAt: string | null
@@ -39,13 +33,6 @@ const TABS: { key: Agent; label: string }[] = [
   { key: "conversation", label: "Conversation" },
   { key: "scheduled", label: "Scheduled" },
 ]
-
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " · " +
-    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-}
 
 export function Sidebar({ sessions, activeId, onSelect, agent, onAgentChange, activeSessions, className = "flex" }: SidebarProps) {
   const [heartbeatStatus, setHeartbeatStatus] = useState<HeartbeatStatus | null>(null)

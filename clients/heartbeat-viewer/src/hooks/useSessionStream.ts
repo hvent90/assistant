@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { createGraph, reduceEvent } from "llm-gateway/packages/ai/client"
+import { reduceEvent } from "llm-gateway/packages/ai/client"
 import type { Graph, GraphEvent } from "llm-gateway/packages/ai/client"
-
-interface UseSessionStreamResult {
-  graph: Graph | null
-  isStreaming: boolean
-}
 
 /**
  * Normalize an SSE event into a GraphEvent that reduceEvent() can process.
@@ -47,59 +42,50 @@ function toGraphEvent(raw: Record<string, unknown>): GraphEvent | null {
 
 /**
  * Hook that streams live events from an active session via SSE,
- * building a Graph incrementally with reduceEvent() and RAF batching.
+ * applying them directly to the parent's graph via setGraph.
  *
- * Accepts an optional initialGraph (from REST) so streaming appends
- * to existing conversation history rather than starting empty.
+ * Single-graph pattern: no internal graph state. Events are applied
+ * via reduceEvent() to the same graph that REST data populates.
+ * Waits for graphLoaded before connecting to avoid overwrite races.
  */
 export function useSessionStream(
   sessionId: number | null,
   active: boolean,
-  initialGraph?: Graph | null,
-): UseSessionStreamResult {
-  const [graph, setGraph] = useState<Graph | null>(null)
+  graphLoaded: boolean,
+  setGraph: React.Dispatch<React.SetStateAction<Graph | null>>,
+): { isStreaming: boolean } {
   const [isStreaming, setIsStreaming] = useState(false)
 
   // Refs for RAF batching
-  const graphRef = useRef<Graph>(createGraph())
   const pendingEvents = useRef<GraphEvent[]>([])
   const rafId = useRef<number>(0)
-  const initialGraphRef = useRef<Graph | null>(null)
-  initialGraphRef.current = initialGraph ?? null
+  const setGraphRef = useRef(setGraph)
+  setGraphRef.current = setGraph
 
-  // If REST data arrives while already streaming with an empty graph, seed it in
-  useEffect(() => {
-    if (isStreaming && initialGraph && graphRef.current.nodes.size === 0) {
-      graphRef.current = initialGraph
-      setGraph(initialGraph)
-    }
-  }, [initialGraph, isStreaming])
+  const applyEvents = useCallback((events: GraphEvent[]) => {
+    setGraphRef.current((prev) => {
+      if (!prev) return prev
+      let g = prev
+      for (const event of events) g = reduceEvent(g, event)
+      return g
+    })
+  }, [])
 
   const flushEvents = useCallback(() => {
     rafId.current = 0
     if (pendingEvents.current.length === 0) return
-
-    let g = graphRef.current
-    for (const event of pendingEvents.current) {
-      g = reduceEvent(g, event)
-    }
+    const batch = pendingEvents.current
     pendingEvents.current = []
-    graphRef.current = g
-    setGraph(g)
-  }, [])
+    applyEvents(batch)
+  }, [applyEvents])
 
   useEffect(() => {
-    if (!active || sessionId === null) {
-      // Don't null the graph — keep last state for smooth transition back to REST
+    if (!active || sessionId === null || !graphLoaded) {
       setIsStreaming(false)
       return
     }
 
-    // Seed from REST history if available, otherwise start empty
-    const seed = initialGraphRef.current ?? createGraph()
-    graphRef.current = seed
     pendingEvents.current = []
-    setGraph(seed.nodes.size > 0 ? seed : null)
     setIsStreaming(true)
 
     const baseUrl = (import.meta as any).env?.VITE_BACKEND_URL ?? ""
@@ -116,18 +102,12 @@ export function useSessionStream(
       // Handle harness_end — stream is complete
       if (raw.type === "harness_end") {
         const graphEvent = toGraphEvent(raw)
-        if (graphEvent) {
-          pendingEvents.current.push(graphEvent)
-        }
+        if (graphEvent) pendingEvents.current.push(graphEvent)
         // Flush immediately on end
         if (rafId.current) cancelAnimationFrame(rafId.current)
-        let g = graphRef.current
-        for (const event of pendingEvents.current) {
-          g = reduceEvent(g, event)
-        }
+        const batch = pendingEvents.current
         pendingEvents.current = []
-        graphRef.current = g
-        setGraph(g)
+        applyEvents(batch)
         setIsStreaming(false)
         return
       }
@@ -148,11 +128,16 @@ export function useSessionStream(
 
     return () => {
       es.close()
+      // Flush any remaining events before disconnecting
       if (rafId.current) cancelAnimationFrame(rafId.current)
-      pendingEvents.current = []
+      if (pendingEvents.current.length > 0) {
+        const batch = pendingEvents.current
+        pendingEvents.current = []
+        applyEvents(batch)
+      }
       setIsStreaming(false)
     }
-  }, [sessionId, active, flushEvents])
+  }, [sessionId, active, graphLoaded, flushEvents, applyEvents])
 
-  return { graph, isStreaming }
+  return { isStreaming }
 }

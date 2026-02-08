@@ -47,20 +47,8 @@ async function startListening(): Promise<void> {
 
     const { sessionId, event } = parsed
 
-    // Update active session tracking
-    if (event.type === "harness_start") {
-      activeSessionIds.add(sessionId)
-      for (const ctrl of feedStreams) {
-        sseWrite(ctrl, { type: "session_start", sessionId })
-      }
-    } else if (event.type === "harness_end") {
-      activeSessionIds.delete(sessionId)
-      for (const ctrl of feedStreams) {
-        sseWrite(ctrl, { type: "session_end", sessionId })
-      }
-    }
-
-    // Fan out to per-session stream subscribers
+    // Fan out to per-session stream subscribers FIRST so harness_end
+    // reaches the streaming client before session_end reaches the feed
     const subscribers = sessionStreams.get(sessionId)
     if (subscribers) {
       for (const ctrl of subscribers) {
@@ -72,6 +60,19 @@ async function startListening(): Promise<void> {
           try { ctrl.close() } catch { /* already closed */ }
         }
         sessionStreams.delete(sessionId)
+      }
+    }
+
+    // Then update active session tracking and notify feed subscribers
+    if (event.type === "harness_start") {
+      activeSessionIds.add(sessionId)
+      for (const ctrl of feedStreams) {
+        sseWrite(ctrl, { type: "session_start", sessionId })
+      }
+    } else if (event.type === "harness_end") {
+      activeSessionIds.delete(sessionId)
+      for (const ctrl of feedStreams) {
+        sseWrite(ctrl, { type: "session_end", sessionId })
       }
     }
   })
@@ -162,6 +163,8 @@ function handleSSEStream(url: URL, req: Request): Response | null {
       start(controller) {
         savedController = controller
         feedStreams.add(controller)
+        // Send current active sessions so client doesn't miss already-started sessions
+        sseWrite(controller, { type: "initial", activeSessions: [...activeSessionIds] })
       },
       cancel() {
         feedStreams.delete(savedController)
@@ -174,40 +177,42 @@ function handleSSEStream(url: URL, req: Request): Response | null {
   return null
 }
 
+async function fetchSessionList(agent: string): Promise<Response> {
+  const result = await pool.query<SessionRow>(
+    `SELECT DISTINCT ON (m.session_id) m.session_id, s.created_at, m.content
+     FROM messages m JOIN sessions s ON s.id = m.session_id
+     WHERE m.agent = $1
+     ORDER BY m.session_id DESC, m.created_at ASC`,
+    [agent]
+  )
+  const sessions = result.rows.map((r) => ({
+    id: r.session_id,
+    createdAt: r.created_at.toISOString(),
+    preview: extractPreview(r.content),
+  }))
+  return Response.json(sessions)
+}
+
+async function fetchSessionDetail(agent: string, sessionId: number): Promise<{ createdAt: string; nodes: Node[] } | null> {
+  const result = await pool.query<{ content: Node[]; created_at: Date }>(
+    `SELECT m.content, s.created_at
+     FROM messages m JOIN sessions s ON s.id = m.session_id
+     WHERE m.agent = $1 AND m.session_id = $2
+     ORDER BY m.created_at ASC`,
+    [agent, sessionId]
+  )
+  if (result.rows.length === 0) return null
+  return {
+    createdAt: result.rows[0]!.created_at.toISOString(),
+    nodes: result.rows.flatMap((r) => r.content),
+  }
+}
+
 async function handleApi(url: URL): Promise<Response> {
   // --- REST: Session list ---
   if (url.pathname === "/api/sessions") {
     const agent = url.searchParams.get("agent") ?? "heartbeat"
-
-    if (agent === "conversation") {
-      const result = await pool.query<SessionRow>(
-        `SELECT DISTINCT ON (m.session_id) m.session_id, s.created_at, m.content
-         FROM messages m JOIN sessions s ON s.id = m.session_id
-         WHERE m.agent = 'conversation'
-         ORDER BY m.session_id DESC, m.created_at ASC`
-      )
-      const sessions = result.rows.map((r) => ({
-        id: r.session_id,
-        createdAt: r.created_at.toISOString(),
-        preview: extractPreview(r.content),
-        active: activeSessionIds.has(r.session_id),
-      }))
-      return Response.json(sessions)
-    }
-
-    const result = await pool.query<SessionRow>(
-      `SELECT m.session_id, s.created_at, m.content
-       FROM messages m JOIN sessions s ON s.id = m.session_id
-       WHERE m.agent = 'heartbeat'
-       ORDER BY s.created_at DESC`
-    )
-    const sessions = result.rows.map((r) => ({
-      id: r.session_id,
-      createdAt: r.created_at.toISOString(),
-      preview: extractPreview(r.content),
-      active: activeSessionIds.has(r.session_id),
-    }))
-    return Response.json(sessions)
+    return fetchSessionList(agent)
   }
 
   const match = url.pathname.match(/^\/api\/sessions\/(\d+)$/)
@@ -215,50 +220,27 @@ async function handleApi(url: URL): Promise<Response> {
     const sessionId = Number(match[1])
     const agent = url.searchParams.get("agent") ?? "heartbeat"
 
-    if (agent === "conversation") {
-      const result = await pool.query<{ content: Node[]; created_at: Date }>(
-        `SELECT m.content, s.created_at
-         FROM messages m JOIN sessions s ON s.id = m.session_id
-         WHERE m.agent = 'conversation' AND m.session_id = $1
-         ORDER BY m.created_at ASC`,
-        [sessionId]
-      )
-      if (result.rows.length === 0) {
-        return Response.json({ error: "not found" }, { status: 404 })
-      }
-      const nodes = result.rows.flatMap((r) => r.content)
-      return Response.json({
-        id: sessionId,
-        createdAt: result.rows[0]!.created_at.toISOString(),
-        nodes,
-      })
-    }
-
-    const result = await pool.query<{ content: Node[]; created_at: Date }>(
-      `SELECT m.content, s.created_at
-       FROM messages m JOIN sessions s ON s.id = m.session_id
-       WHERE m.agent = 'heartbeat' AND m.session_id = $1`,
-      [sessionId]
-    )
-    if (result.rows.length === 0) {
+    const detail = await fetchSessionDetail(agent, sessionId)
+    if (!detail) {
       return Response.json({ error: "not found" }, { status: 404 })
     }
-    const row = result.rows[0]!
 
-    // Check if this session was triggered by a scheduled task
-    const taskResult = await pool.query<{ id: number; prompt: string; fire_at: Date }>(
-      `SELECT id, prompt, fire_at FROM scheduled_tasks WHERE session_id = $1 LIMIT 1`,
-      [sessionId]
-    )
-    const triggeredBy = taskResult.rows[0]
-      ? { id: taskResult.rows[0].id, prompt: taskResult.rows[0].prompt, fireAt: taskResult.rows[0].fire_at.toISOString() }
-      : null
+    // Heartbeat sessions may have a triggeredBy scheduled task
+    let triggeredBy = null
+    if (agent === "heartbeat") {
+      const taskResult = await pool.query<{ id: number; prompt: string; fire_at: Date }>(
+        `SELECT id, prompt, fire_at FROM scheduled_tasks WHERE session_id = $1 LIMIT 1`,
+        [sessionId]
+      )
+      if (taskResult.rows[0]) {
+        triggeredBy = { id: taskResult.rows[0].id, prompt: taskResult.rows[0].prompt, fireAt: taskResult.rows[0].fire_at.toISOString() }
+      }
+    }
 
     return Response.json({
       id: sessionId,
-      createdAt: row.created_at.toISOString(),
-      nodes: row.content,
-      triggeredBy,
+      ...detail,
+      ...(triggeredBy ? { triggeredBy } : {}),
     })
   }
 
