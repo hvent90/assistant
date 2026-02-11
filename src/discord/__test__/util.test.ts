@@ -68,12 +68,8 @@ describe("renderViewContent", () => {
     expect(renderViewContent({ kind: "text", text: "hello world" })).toBe("hello world")
   })
 
-  test("renders reasoning as blockquote italic", () => {
-    expect(renderViewContent({ kind: "reasoning", text: "thinking" })).toBe("> *thinking*")
-  })
-
-  test("renders multiline reasoning with blockquotes on each line", () => {
-    expect(renderViewContent({ kind: "reasoning", text: "line1\nline2" })).toBe("> *line1\n> line2*")
+  test("renders reasoning as empty string", () => {
+    expect(renderViewContent({ kind: "reasoning", text: "thinking" })).toBe("")
   })
 
   test("renders tool_call as inline code", () => {
@@ -84,8 +80,8 @@ describe("renderViewContent", () => {
     expect(renderViewContent({ kind: "error", message: "something broke" })).toBe("**Error:** something broke")
   })
 
-  test("renders pending as italic thinking", () => {
-    expect(renderViewContent({ kind: "pending" })).toBe("*thinking...*")
+  test("renders pending as italic working", () => {
+    expect(renderViewContent({ kind: "pending" })).toBe("*working...*")
   })
 
   test("renders user as empty string", () => {

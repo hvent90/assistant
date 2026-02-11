@@ -1,17 +1,13 @@
 import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, type DMChannel, type Message } from "discord.js"
-import { createGraph, projectThread } from "llm-gateway/packages/ai/client"
 import type { Graph } from "llm-gateway/packages/ai/client"
 import type { ConsumerHarnessEvent } from "llm-gateway/packages/ai/orchestrator"
 import type { ContentPart } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "../queue"
 import { getKv, setKv, createSession } from "../db"
 import { transcribeVoice } from "./transcribe"
-import { renderViewNodes, splitMessage } from "./util"
+import { splitMessage } from "./util"
 
 const DM_CHANNEL_KEY = "discord_dm_channel_id"
-
-// Events that trigger a Discord message update (not streaming deltas)
-const UPDATE_EVENTS = new Set(["harness_start", "harness_end", "tool_call", "tool_result", "error"])
 
 export type DiscordChannel = {
   start(): Promise<void>
@@ -161,12 +157,12 @@ export function createDiscordChannel(opts: {
     },
     createStreamRenderer(channelId: string, opts?: { prefix?: string }) {
       const prefix = opts?.prefix ?? ""
-      let msg: Message | null = null
-      let hasUnsentReasoning = false
-      let pendingRender: string | null = null
-      let debounceTimer: ReturnType<typeof setTimeout> | null = null
+      let statusMsg: Message | null = null
+      let currentTextId: string | null = null
+      let currentText = ""
+      let prefixSent = false
       let channelRef: DMChannel | null = null
-      let latestGraph: Graph = createGraph()
+      let queue: Promise<void> = Promise.resolve()
 
       const getChannel = async () => {
         if (!channelRef) {
@@ -177,67 +173,77 @@ export function createDiscordChannel(opts: {
         return channelRef
       }
 
-      const flushUpdate = async () => {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer)
-          debounceTimer = null
-        }
-        if (!pendingRender) return
-        const content = pendingRender
-        pendingRender = null
-        const ch = await getChannel()
-        const chunks = splitMessage(content, 1500)
-        for (let i = 0; i < chunks.length; i++) {
-          const chunk = chunks[i]!
-          if (i === 0) {
-            if (!msg) {
-              msg = await ch.send(chunk)
-            } else {
-              await msg.edit(chunk).catch(console.error)
-            }
-          } else {
-            await ch.send(chunk)
-          }
-        }
+      const enqueue = (fn: () => Promise<void>) => {
+        queue = queue.then(fn).catch(console.error)
       }
 
-      const scheduleUpdate = (rendered: string) => {
-        pendingRender = rendered
-        if (debounceTimer) clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(flushUpdate, 1000)
+      const showStatus = () => {
+        enqueue(async () => {
+          if (statusMsg) return
+          const ch = await getChannel()
+          statusMsg = await ch.send("*working...*")
+        })
+      }
+
+      const sendText = () => {
+        const text = currentText.trim()
+        currentTextId = null
+        currentText = ""
+        if (!text) return
+        const full = (!prefixSent && prefix) ? prefix + "\n" + text : text
+        prefixSent = true
+        enqueue(async () => {
+          const ch = await getChannel()
+          for (const chunk of splitMessage(full, 2000)) {
+            await ch.send(chunk)
+          }
+        })
+      }
+
+      const deleteStatus = () => {
+        enqueue(async () => {
+          if (!statusMsg) return
+          await statusMsg.delete().catch(console.error)
+          statusMsg = null
+        })
       }
 
       return {
-        onEvent(event: ConsumerHarnessEvent, graph: Graph) {
-          latestGraph = graph
-
-          if (event.type === "reasoning") {
-            hasUnsentReasoning = true
+        onEvent(event: ConsumerHarnessEvent, _graph: Graph) {
+          if (event.type === "harness_start") {
+            showStatus()
             return
           }
 
-          const shouldUpdate =
-            UPDATE_EVENTS.has(event.type) ||
-            (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call"))
-
-          if (hasUnsentReasoning && (event.type === "text" || event.type === "tool_call")) {
-            hasUnsentReasoning = false
+          if (event.type === "text") {
+            // New text block — send the previous one
+            if (currentTextId && event.id !== currentTextId) {
+              sendText()
+            }
+            currentTextId = event.id
+            currentText += (event as { content: string }).content
+            return
           }
 
-          if (!shouldUpdate) return
+          // Non-text event after text accumulation → text block complete
+          if (currentText) sendText()
 
-          const viewNodes = projectThread(graph)
-          const rendered = prefix ? prefix + "\n" + renderViewNodes(viewNodes) : renderViewNodes(viewNodes)
-          if (rendered) scheduleUpdate(rendered)
+          if (event.type === "error") {
+            const msg = (event as { error: Error }).error.message
+            enqueue(async () => {
+              const ch = await getChannel()
+              await ch.send(`**Error:** ${msg}`)
+            })
+          }
+
+          if (event.type === "harness_end") {
+            deleteStatus()
+          }
         },
         async flush() {
-          const viewNodes = projectThread(latestGraph)
-          const raw = renderViewNodes(viewNodes)
-          const finalRendered = prefix ? prefix + "\n" + raw : raw
-          if (finalRendered) {
-            pendingRender = finalRendered
-            await flushUpdate()
-          }
+          if (currentText) sendText()
+          deleteStatus()
+          await queue
         },
       }
     },

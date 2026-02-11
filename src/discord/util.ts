@@ -5,13 +5,13 @@ export function renderViewContent(content: ViewContent): string {
     case "text":
       return content.text
     case "reasoning":
-      return `> *${content.text.split("\n").join("\n> ")}*`
+      return "" // Don't render reasoning in Discord messages
     case "tool_call":
       return `\`${content.name}\``
     case "error":
       return `**Error:** ${content.message}`
     case "pending":
-      return "*thinking...*"
+      return "*working...*"
     case "user":
     case "relay":
       return ""
