@@ -4,7 +4,7 @@ import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools"
 import { discoverSkills, formatSkillsPrompt } from "llm-gateway/packages/ai/skills"
-import { createScheduleTool, readTool, writeTool } from "../../tools"
+import { createScheduleTool, scheduleListTool, scheduleEditTool, scheduleCancelTool, readTool, writeTool } from "../../tools"
 import { buildConversationContext } from "./context"
 import { readMemoryFiles, collectAgentOutput } from "../../context"
 import { appendMessage, getSessionMessages, ensureCurrentSession } from "../../db"
@@ -102,9 +102,9 @@ export async function spawnConversationRun(opts: ConversationRunOpts, signals: S
     orchestrator.spawn({
       model,
       messages,
-      tools: [bashTool, readTool, writeTool, scheduleTool],
+      tools: [bashTool, readTool, writeTool, scheduleTool, scheduleListTool, scheduleEditTool, scheduleCancelTool],
       permissions: {
-        allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }, { tool: "schedule" }],
+        allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }, { tool: "schedule" }, { tool: "schedule_list" }, { tool: "schedule_edit" }, { tool: "schedule_cancel" }],
       },
     })
 

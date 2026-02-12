@@ -4,7 +4,7 @@ import { createAgentHarness } from "llm-gateway/packages/ai/harness/agent"
 import { createGeneratorHarness } from "llm-gateway/packages/ai/harness/providers/zen"
 import { bashTool } from "llm-gateway/packages/ai/tools"
 import { discoverSkills, formatSkillsPrompt } from "llm-gateway/packages/ai/skills"
-import { createSpeakTool, createScheduleTool, readTool, writeTool } from "../../tools"
+import { createSpeakTool, createScheduleTool, scheduleListTool, scheduleEditTool, scheduleCancelTool, readTool, writeTool } from "../../tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles, collectAgentOutput } from "../../context"
 import { appendMessage, createSession } from "../../db"
@@ -41,9 +41,9 @@ export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: strin
     orchestrator.spawn({
       model,
       messages,
-      tools: [bashTool, readTool, writeTool, speakTool, scheduleTool],
+      tools: [bashTool, readTool, writeTool, speakTool, scheduleTool, scheduleListTool, scheduleEditTool, scheduleCancelTool],
       permissions: {
-        allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }, { tool: "speak" }, { tool: "schedule" }],
+        allowlist: [{ tool: "bash" }, { tool: "read" }, { tool: "write" }, { tool: "speak" }, { tool: "schedule" }, { tool: "schedule_list" }, { tool: "schedule_edit" }, { tool: "schedule_cancel" }],
       },
     })
 
