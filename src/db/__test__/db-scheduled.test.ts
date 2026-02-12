@@ -111,6 +111,25 @@ describe("scheduled tasks DB functions", () => {
     expect(tasks.find((t) => t.prompt === `${PREFIX}list-range-out`)).toBeUndefined()
   })
 
+  test("listScheduledTasks filters by status and date range combined", async () => {
+    const fireAt = new Date("2099-05-10T12:00:00Z")
+    const id = await insertScheduledTask(fireAt, `${PREFIX}list-combined`)
+    await updateTaskStatus(id, "running")
+    await updateTaskStatus(id, "completed")
+
+    // Matches status + date range
+    const found = await listScheduledTasks({ status: "completed", from: new Date("2099-05-09"), to: new Date("2099-05-11") })
+    expect(found.find((t) => t.id === id)).toBeDefined()
+
+    // Wrong status
+    const wrongStatus = await listScheduledTasks({ status: "pending", from: new Date("2099-05-09"), to: new Date("2099-05-11") })
+    expect(wrongStatus.find((t) => t.id === id)).toBeUndefined()
+
+    // Wrong date range
+    const wrongRange = await listScheduledTasks({ status: "completed", from: new Date("2099-06-01"), to: new Date("2099-06-02") })
+    expect(wrongRange.find((t) => t.id === id)).toBeUndefined()
+  })
+
   test("listScheduledTasks returns empty array when nothing matches", async () => {
     const tasks = await listScheduledTasks({ status: "pending", from: new Date("2199-01-01"), to: new Date("2199-01-02") })
     expect(tasks).toEqual([])
