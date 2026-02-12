@@ -93,6 +93,36 @@ export async function insertScheduledTask(fireAt: Date, prompt: string): Promise
   return result.rows[0].id
 }
 
+export async function listScheduledTasks(opts: {
+  status?: string
+  from?: Date
+  to?: Date
+}): Promise<ScheduledTask[]> {
+  const conditions: string[] = []
+  const params: unknown[] = []
+  let i = 1
+
+  const status = opts.status ?? "pending"
+  conditions.push(`status = $${i++}`)
+  params.push(status)
+
+  if (opts.from) {
+    conditions.push(`fire_at >= $${i++}`)
+    params.push(opts.from)
+  }
+  if (opts.to) {
+    conditions.push(`fire_at <= $${i++}`)
+    params.push(opts.to)
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
+  const result = await getPool().query(
+    `SELECT * FROM scheduled_tasks ${where} ORDER BY fire_at ASC`,
+    params
+  )
+  return result.rows
+}
+
 export async function getPendingDueTasks(now: Date): Promise<ScheduledTask[]> {
   const result = await getPool().query(
     `SELECT * FROM scheduled_tasks

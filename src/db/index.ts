@@ -8,6 +8,7 @@ export {
   setKv,
   ensureCurrentSession,
   insertScheduledTask,
+  listScheduledTasks,
   getPendingDueTasks,
   updateTaskStatus,
   publishEvent,
