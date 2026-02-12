@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, ping, insertScheduledTask } from "../../db"
+import { initDb, shutdown, ping, insertScheduledTask, createSession } from "../../db"
 import { pollOnce } from ".."
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
@@ -27,7 +27,7 @@ describe("scheduler pollOnce", () => {
 
     await pollOnce(async (task) => {
       fired.push({ id: task.id, prompt: task.prompt })
-      return 0
+      return await createSession()
     })
 
     expect(fired.length).toBeGreaterThanOrEqual(1)
@@ -44,7 +44,7 @@ describe("scheduler pollOnce", () => {
 
     await pollOnce(async (task) => {
       fired.push(task.id)
-      return 0
+      return await createSession()
     })
 
     expect(fired).not.toContain(id)
@@ -56,7 +56,7 @@ describe("scheduler pollOnce", () => {
 
     await pollOnce(async (task) => {
       if (task.id === id) throw new Error("intentional failure")
-      return 0
+      return await createSession()
     })
 
     const { getPendingDueTasks } = await import("../../db")

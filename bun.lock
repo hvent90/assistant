@@ -71,7 +71,7 @@
 
     "@discordjs/ws": ["@discordjs/ws@1.2.3", "", { "dependencies": { "@discordjs/collection": "^2.1.0", "@discordjs/rest": "^2.5.1", "@discordjs/util": "^1.1.0", "@sapphire/async-queue": "^1.5.2", "@types/ws": "^8.5.10", "@vladfrangu/async_event_emitter": "^2.2.4", "discord-api-types": "^0.38.1", "tslib": "^2.6.2", "ws": "^8.17.0" } }, "sha512-wPlQDxEmlDg5IxhJPuxXr3Vy9AjYq5xCvFWGJyD7w7Np8ZGu+Mc+97LCoEc/+AYCo2IDpKioiH0/c/mj5ZR9Uw=="],
 
-    "@effect/platform": ["@effect/platform@0.94.3", "", { "dependencies": { "find-my-way-ts": "^0.1.6", "msgpackr": "^1.11.4", "multipasta": "^0.2.7" }, "peerDependencies": { "effect": "^3.19.16" } }, "sha512-bvTR8xLQoRpKgHuprZDOeQdPkhyVw+WT05iI9jl2s8Qiblyk5Dz2JLwJU+EFeksIBaPYz49xa635Om91T1CefQ=="],
+    "@effect/platform": ["@effect/platform@0.94.4", "", { "dependencies": { "find-my-way-ts": "^0.1.6", "msgpackr": "^1.11.4", "multipasta": "^0.2.7" }, "peerDependencies": { "effect": "^3.19.16" } }, "sha512-mK8pbskFAcBRA5Ooyt02kCBuWltZakyaDcM4ByTY0jXQMFC3NUveNK62JVH7XB+f3XZ8OoBBxUnlLben4plEKQ=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.3", "", { "os": "aix", "cpu": "ppc64" }, "sha512-9fJMTNFTWZMh5qwrBItuziu834eOCUcEqymSH7pY+zoMVEZg3gcPuBNxH1EvfVYe9h0x/Ptw8KBzv7qxb7l8dg=="],
 
@@ -283,7 +283,7 @@
 
     "@types/ms": ["@types/ms@2.1.0", "", {}, "sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA=="],
 
-    "@types/node": ["@types/node@25.2.1", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-CPrnr8voK8vC6eEtyRzvMpgp3VyVRhgclonE7qYi6P9sXwYb59ucfrnmFBTaP0yUi8Gk4yZg/LlTJULGxvTNsg=="],
+    "@types/node": ["@types/node@25.2.2", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ=="],
 
     "@types/pg": ["@types/pg@8.16.0", "", { "dependencies": { "@types/node": "*", "pg-protocol": "*", "pg-types": "^2.2.0" } }, "sha512-RmhMd/wD+CF8Dfo+cVIy3RR5cl8CyfXQ0tGgW6XBL8L4LM/UTEbNXYRbLwU6w+CgrKBNbrQWt4FUtTfaU5jSYQ=="],
 
@@ -385,7 +385,7 @@
 
     "hastscript": ["hastscript@9.0.1", "", { "dependencies": { "@types/hast": "^3.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-parse-selector": "^4.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0" } }, "sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w=="],
 
-    "hono": ["hono@4.11.8", "", {}, "sha512-eVkB/CYCCei7K2WElZW9yYQFWssG0DhaDhVvr7wy5jJ22K+ck8fWW0EsLpB0sITUTvPnc97+rrbQqIr5iqiy9Q=="],
+    "hono": ["hono@4.11.9", "", {}, "sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ=="],
 
     "html-url-attributes": ["html-url-attributes@3.0.1", "", {}, "sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ=="],
 
@@ -437,7 +437,7 @@
 
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.30.2", "", { "os": "win32", "cpu": "x64" }, "sha512-5g1yc73p+iAkid5phb4oVFMB45417DkRevRbt/El/gKXJk4jid+vPFF/AXbxn05Aky8PapwzZrdJShv5C0avjw=="],
 
-    "llm-gateway": ["llm-gateway@git+ssh://git@github.com:hvent90/llm-gateway.git#a36b5fe4fad48c846d1b9e5804725008693a50fe", { "dependencies": { "@anthropic-ai/sdk": "^0.71.2", "@base-ui-components/react": "^1.0.0-rc.0", "@effect/platform": "^0.94.2", "@openrouter/sdk": "^0.3.16", "@tailwindcss/vite": "^4.1.18", "@vitejs/plugin-react": "^5.1.2", "effect": "^3.19.15", "hono": "^4.11.5", "openai": "^6.16.0", "oxfmt": "^0.26.0", "picocolors": "^1.1.1", "picomatch": "^4.0.3", "react": "^19.2.3", "react-dom": "^19.2.3", "solid-js": "^1.9.11", "streamdown": "^2.1.0", "tailwindcss": "^4.1.18", "uuid": "^13.0.0", "vite": "^7.3.1", "zod": "^4.3.5" }, "peerDependencies": { "@opentui/core": "^0.1.74", "@opentui/react": "^0.1.75", "@opentui/solid": "^0.1.75", "typescript": "^5" }, "optionalPeers": ["@opentui/core", "@opentui/react", "@opentui/solid"] }, "a36b5fe4fad48c846d1b9e5804725008693a50fe"],
+    "llm-gateway": ["llm-gateway@git+ssh://git@github.com:hvent90/llm-gateway.git#a07ef9ee21182c75197816a6ec98e051246c7030", { "dependencies": { "@anthropic-ai/sdk": "^0.71.2", "@base-ui-components/react": "^1.0.0-rc.0", "@effect/platform": "^0.94.2", "@openrouter/sdk": "^0.3.16", "@tailwindcss/vite": "^4.1.18", "@vitejs/plugin-react": "^5.1.2", "effect": "^3.19.15", "hono": "^4.11.5", "openai": "^6.16.0", "oxfmt": "^0.26.0", "picocolors": "^1.1.1", "picomatch": "^4.0.3", "react": "^19.2.3", "react-dom": "^19.2.3", "solid-js": "^1.9.11", "streamdown": "^2.1.0", "tailwindcss": "^4.1.18", "uuid": "^13.0.0", "vite": "^7.3.1", "zod": "^4.3.5" }, "peerDependencies": { "@opentui/core": "^0.1.74", "@opentui/react": "^0.1.75", "@opentui/solid": "^0.1.75", "typescript": "^5" }, "optionalPeers": ["@opentui/core", "@opentui/react", "@opentui/solid"] }, "a07ef9ee21182c75197816a6ec98e051246c7030"],
 
     "lodash": ["lodash@4.17.23", "", {}, "sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w=="],
 
