@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir } from "fs/promises"
 import { dirname } from "path"
 import type { ToolDefinition } from "llm-gateway/packages/ai/types"
 import type { SignalQueue } from "../queue"
-import { insertScheduledTask } from "../db"
+import { insertScheduledTask, listScheduledTasks, editScheduledTask, cancelScheduledTask } from "../db"
 import { formatLocalTime } from "../format-time"
 
 const readSchema = z.object({
@@ -100,4 +100,114 @@ export function createScheduleTool(): ToolDefinition<typeof scheduleSchema, stri
       return { context: msg, result: msg }
     },
   }
+}
+
+const scheduleListSchema = z.object({
+  status: z.string().optional().describe("Filter by status: pending, running, completed, failed, cancelled. Defaults to 'pending'."),
+  from: z.string().optional().describe("Only show tasks firing at or after this time, e.g. '2026-02-10' or '2026-02-10 14:00'"),
+  to: z.string().optional().describe("Only show tasks firing at or before this time"),
+})
+
+export const scheduleListTool: ToolDefinition<typeof scheduleListSchema, string> = {
+  name: "schedule_list",
+  description: "List scheduled tasks. Defaults to showing pending tasks. Use status, from, and to filters to narrow results.",
+  schema: scheduleListSchema,
+  derivePermission: () => ({ tool: "schedule_list", params: {} }),
+  execute: async ({ status, from, to }) => {
+    const opts: { status?: string; from?: Date; to?: Date } = {}
+    if (status) opts.status = status
+    if (from) {
+      const d = new Date(from)
+      if (isNaN(d.getTime())) {
+        const msg = `Error: could not parse "${from}" as a date.`
+        return { context: msg, result: msg }
+      }
+      opts.from = d
+    }
+    if (to) {
+      const d = new Date(to)
+      if (isNaN(d.getTime())) {
+        const msg = `Error: could not parse "${to}" as a date.`
+        return { context: msg, result: msg }
+      }
+      opts.to = d
+    }
+
+    const tasks = await listScheduledTasks(opts)
+    if (tasks.length === 0) {
+      const msg = "No scheduled tasks found matching filters."
+      return { context: msg, result: msg }
+    }
+
+    const lines = tasks.map((t) => {
+      const time = formatLocalTime(t.fire_at)
+      const prompt = t.prompt.length > 60 ? t.prompt.slice(0, 60) + "..." : t.prompt
+      return `#${t.id}  ${time}  [${t.status}]  ${prompt}`
+    })
+    const msg = lines.join("\n")
+    return { context: msg, result: msg }
+  },
+}
+
+const scheduleEditSchema = z.object({
+  id: z.number().describe("The task ID to edit"),
+  at: z.string().optional().describe("New fire time, e.g. '2026-02-10 3:00 PM'"),
+  prompt: z.string().optional().describe("New prompt/instructions for the task"),
+})
+
+export const scheduleEditTool: ToolDefinition<typeof scheduleEditSchema, string> = {
+  name: "schedule_edit",
+  description: "Edit a pending scheduled task's time or prompt. At least one of 'at' or 'prompt' must be provided. Only pending tasks can be edited.",
+  schema: scheduleEditSchema,
+  derivePermission: () => ({ tool: "schedule_edit", params: {} }),
+  execute: async ({ id, at, prompt }) => {
+    const updates: { fireAt?: Date; prompt?: string } = {}
+
+    if (at) {
+      const d = new Date(at)
+      if (isNaN(d.getTime())) {
+        const msg = `Error: could not parse "${at}" as a date/time.`
+        return { context: msg, result: msg }
+      }
+      updates.fireAt = d
+    }
+    if (prompt) updates.prompt = prompt
+
+    if (!updates.fireAt && !updates.prompt) {
+      const msg = "Error: provide at least one of 'at' or 'prompt' to edit."
+      return { context: msg, result: msg }
+    }
+
+    const count = await editScheduledTask(id, updates)
+    if (count === 0) {
+      const msg = `Task #${id} not found or not editable (only pending tasks can be edited).`
+      return { context: msg, result: msg }
+    }
+
+    const parts = []
+    if (updates.fireAt) parts.push(`time -> ${formatLocalTime(updates.fireAt)}`)
+    if (updates.prompt) parts.push(`prompt -> "${updates.prompt.slice(0, 60)}${updates.prompt.length > 60 ? "..." : ""}"`)
+    const msg = `Updated task #${id}: ${parts.join(", ")}`
+    return { context: msg, result: msg }
+  },
+}
+
+const scheduleCancelSchema = z.object({
+  id: z.number().describe("The task ID to cancel"),
+})
+
+export const scheduleCancelTool: ToolDefinition<typeof scheduleCancelSchema, string> = {
+  name: "schedule_cancel",
+  description: "Cancel a pending scheduled task. Only pending tasks can be cancelled.",
+  schema: scheduleCancelSchema,
+  derivePermission: () => ({ tool: "schedule_cancel", params: {} }),
+  execute: async ({ id }) => {
+    const count = await cancelScheduledTask(id)
+    if (count === 0) {
+      const msg = `Task #${id} not found or not editable (only pending tasks can be cancelled).`
+      return { context: msg, result: msg }
+    }
+    const msg = `Cancelled task #${id}.`
+    return { context: msg, result: msg }
+  },
 }
