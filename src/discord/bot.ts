@@ -228,6 +228,15 @@ export function createDiscordChannel(opts: {
           // Non-text event after text accumulation → text block complete
           if (currentText) sendText()
 
+          if (event.type === "tool_call") {
+            const name = (event as { name: string }).name
+            enqueue(async () => {
+              if (!statusMsg) return
+              await statusMsg.edit(`*using ${name}...*`).catch(console.error)
+            })
+            return
+          }
+
           if (event.type === "error") {
             const msg = (event as { error: Error }).error.message
             enqueue(async () => {
