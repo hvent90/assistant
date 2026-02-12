@@ -4,6 +4,12 @@ import type { MemoryFiles } from "../../context"
 import { buildSystemPrompt } from "../../context"
 import { formatLocalTime } from "../../format-time"
 
+type RecentMessage = {
+  role: string
+  text: string
+  created_at: Date
+}
+
 type HeartbeatContextInput = {
   statusBoard: StatusBoard
   memory: MemoryFiles
@@ -11,9 +17,10 @@ type HeartbeatContextInput = {
   repoRoot: string
   addendum?: string
   skillsPrompt?: string
+  recentHistory?: RecentMessage[]
 }
 
-export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot, addendum, skillsPrompt }: HeartbeatContextInput): Message[] {
+export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRoot, addendum, skillsPrompt, recentHistory }: HeartbeatContextInput): Message[] {
   const messages: Message[] = []
 
   messages.push({ role: "system", content: buildSystemPrompt(statusBoard, memory, memoriesDir, repoRoot, skillsPrompt) })
@@ -24,14 +31,17 @@ export function buildHeartbeatContext({ statusBoard, memory, memoriesDir, repoRo
 2. Read any file that looks like a reminder, task, or note (not soul.md, user.md, or instructions.md — those are config)
 3. If any reminder is due or overdue, use speak() to notify the user immediately
 4. Clean up or update files after acting on them
-5. If you need recent conversation context, query the database. IMPORTANT: The content column is a JSONB array of nodes — always extract only text nodes to avoid pulling in huge tool call data:
-   podman exec infra_postgres_1 psql -U assistant -d assistant -c "SELECT role, jsonb_path_query_array(content, '$[*] ? (@.type == \"text\").text') AS content, created_at FROM messages WHERE created_at >= NOW() - INTERVAL '12 hours' ORDER BY created_at DESC LIMIT 10"
 
-If anything needs to be communicated to the user — a due reminder, proactive check-in, follow-up, or thought to share — use the speak() tool.
+If anything needs to be communicated to the user — a due reminder, proactive check-in, follow-up, or thought to share — use the speak() tool. But do NOT repeat or follow up on topics already covered in the recent conversation below — only flag genuinely new or stale items.
 
 Only write a diary entry if something genuinely significant has happened — a routine, uneventful heartbeat does not need one. Otherwise, just complete silently.
 
 IMPORTANT: Do NOT say "no action items" unless you have actually run ls and read the files. Claiming there is nothing to do without checking is a failure.`
+
+  if (recentHistory && recentHistory.length > 0) {
+    const lines = recentHistory.map(m => `[${formatLocalTime(m.created_at)}] ${m.role}: ${m.text}`)
+    heartbeatPrompt += `\n\n## Recent Conversation\n\n${lines.join("\n")}`
+  }
 
   if (addendum) {
     heartbeatPrompt += `\n\n## Scheduled Task\n\n${addendum}`

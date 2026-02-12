@@ -7,7 +7,7 @@ import { discoverSkills, formatSkillsPrompt } from "llm-gateway/packages/ai/skil
 import { createSpeakTool, createScheduleTool, scheduleListTool, scheduleEditTool, scheduleCancelTool, readTool, writeTool } from "../../tools"
 import { buildHeartbeatContext } from "./context"
 import { readMemoryFiles, collectAgentOutput } from "../../context"
-import { appendMessage, createSession } from "../../db"
+import { appendMessage, createSession, getRecentMessages } from "../../db"
 import type { SignalQueue } from "../../queue"
 import type { StatusBoardInstance } from "../../types"
 
@@ -25,11 +25,14 @@ export async function spawnHeartbeatRun(opts: HeartbeatRunOpts, addendum?: strin
 
   try {
     const sessionId = await createSession()
-    const memory = await readMemoryFiles(memoriesDir)
+    const [memory, recentHistory] = await Promise.all([
+      readMemoryFiles(memoriesDir),
+      getRecentMessages(20),
+    ])
     const repoRoot = join(memoriesDir, "..")
     const skills = await discoverSkills([join(repoRoot, ".agent/skills")])
     const skillsPrompt = formatSkillsPrompt(skills)
-    const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot, addendum, skillsPrompt })
+    const messages = buildHeartbeatContext({ statusBoard: statusBoard.get(), memory, memoriesDir, repoRoot, addendum, skillsPrompt, recentHistory })
 
     const speakTool = createSpeakTool(queue)
     const scheduleTool = createScheduleTool()

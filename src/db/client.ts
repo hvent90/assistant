@@ -211,6 +211,31 @@ export async function publishEvent(sessionId: number, event: object): Promise<vo
   await getPool().query("SELECT pg_notify('agent_events', $1)", [truncated])
 }
 
+export async function getRecentMessages(limit: number): Promise<Array<{
+  role: string
+  text: string
+  created_at: Date
+}>> {
+  const result = await getPool().query(
+    `SELECT
+       role,
+       jsonb_path_query_array(content, '$[*] ? (@.kind == "text" || @.kind == "user").content') AS texts,
+       created_at
+     FROM messages
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit]
+  )
+  return result.rows
+    .reverse()
+    .map((r: { role: string; texts: string[]; created_at: Date }) => ({
+      role: r.role,
+      text: (r.texts as string[]).join("\n"),
+      created_at: r.created_at,
+    }))
+    .filter((r: { text: string }) => r.text.length > 0)
+}
+
 export async function shutdown() {
   await pool?.end()
   pool = null

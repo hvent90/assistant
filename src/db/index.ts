@@ -4,6 +4,7 @@ export {
   appendMessage,
   createSession,
   getSessionMessages,
+  getRecentMessages,
   getKv,
   setKv,
   ensureCurrentSession,
