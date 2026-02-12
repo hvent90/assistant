@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, insertScheduledTask, getPendingDueTasks, updateTaskStatus, listScheduledTasks, ping } from ".."
+import { initDb, shutdown, insertScheduledTask, getPendingDueTasks, updateTaskStatus, listScheduledTasks, editScheduledTask, cancelScheduledTask, ping } from ".."
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://assistant:assistant@localhost:5434/assistant"
 const PREFIX = "db-sched-test:"
@@ -133,5 +133,63 @@ describe("scheduled tasks DB functions", () => {
   test("listScheduledTasks returns empty array when nothing matches", async () => {
     const tasks = await listScheduledTasks({ status: "pending", from: new Date("2199-01-01"), to: new Date("2199-01-02") })
     expect(tasks).toEqual([])
+  })
+
+  test("editScheduledTask updates fire_at on pending task", async () => {
+    const fireAt = new Date("2099-03-01T12:00:00Z")
+    const id = await insertScheduledTask(fireAt, `${PREFIX}edit-time`)
+
+    const newTime = new Date("2099-04-01T12:00:00Z")
+    const count = await editScheduledTask(id, { fireAt: newTime })
+    expect(count).toBe(1)
+
+    const tasks = await listScheduledTasks({ from: new Date("2099-03-30"), to: new Date("2099-04-02") })
+    expect(tasks.find((t) => t.id === id)).toBeDefined()
+  })
+
+  test("editScheduledTask updates prompt on pending task", async () => {
+    const fireAt = new Date("2099-03-01T12:00:00Z")
+    const id = await insertScheduledTask(fireAt, `${PREFIX}edit-prompt-old`)
+
+    const count = await editScheduledTask(id, { prompt: `${PREFIX}edit-prompt-new` })
+    expect(count).toBe(1)
+
+    const tasks = await listScheduledTasks({})
+    const found = tasks.find((t) => t.id === id)
+    expect(found!.prompt).toBe(`${PREFIX}edit-prompt-new`)
+  })
+
+  test("editScheduledTask returns 0 for non-pending task", async () => {
+    const fireAt = new Date(Date.now() - 60_000)
+    const id = await insertScheduledTask(fireAt, `${PREFIX}edit-running`)
+    await updateTaskStatus(id, "running")
+
+    const count = await editScheduledTask(id, { prompt: `${PREFIX}nope` })
+    expect(count).toBe(0)
+  })
+
+  test("editScheduledTask returns 0 for nonexistent task", async () => {
+    const count = await editScheduledTask(999999, { prompt: `${PREFIX}nope` })
+    expect(count).toBe(0)
+  })
+
+  test("cancelScheduledTask cancels a pending task", async () => {
+    const fireAt = new Date("2099-03-01T12:00:00Z")
+    const id = await insertScheduledTask(fireAt, `${PREFIX}cancel-me`)
+
+    const count = await cancelScheduledTask(id)
+    expect(count).toBe(1)
+
+    const tasks = await listScheduledTasks({ status: "cancelled" })
+    expect(tasks.find((t) => t.id === id)).toBeDefined()
+  })
+
+  test("cancelScheduledTask returns 0 for non-pending task", async () => {
+    const fireAt = new Date(Date.now() - 60_000)
+    const id = await insertScheduledTask(fireAt, `${PREFIX}cancel-running`)
+    await updateTaskStatus(id, "running")
+
+    const count = await cancelScheduledTask(id)
+    expect(count).toBe(0)
   })
 })

@@ -9,6 +9,8 @@ export {
   ensureCurrentSession,
   insertScheduledTask,
   listScheduledTasks,
+  editScheduledTask,
+  cancelScheduledTask,
   getPendingDueTasks,
   updateTaskStatus,
   publishEvent,

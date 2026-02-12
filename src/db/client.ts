@@ -123,6 +123,40 @@ export async function listScheduledTasks(opts: {
   return result.rows
 }
 
+export async function editScheduledTask(
+  id: number,
+  updates: { fireAt?: Date; prompt?: string }
+): Promise<number> {
+  const sets: string[] = []
+  const params: unknown[] = []
+  let i = 1
+
+  if (updates.fireAt) {
+    sets.push(`fire_at = $${i++}`)
+    params.push(updates.fireAt)
+  }
+  if (updates.prompt) {
+    sets.push(`prompt = $${i++}`)
+    params.push(updates.prompt)
+  }
+  if (sets.length === 0) return 0
+
+  params.push(id)
+  const result = await getPool().query(
+    `UPDATE scheduled_tasks SET ${sets.join(", ")} WHERE id = $${i} AND status = 'pending'`,
+    params
+  )
+  return result.rowCount ?? 0
+}
+
+export async function cancelScheduledTask(id: number): Promise<number> {
+  const result = await getPool().query(
+    "UPDATE scheduled_tasks SET status = 'cancelled' WHERE id = $1 AND status = 'pending'",
+    [id]
+  )
+  return result.rowCount ?? 0
+}
+
 export async function getPendingDueTasks(now: Date): Promise<ScheduledTask[]> {
   const result = await getPool().query(
     `SELECT * FROM scheduled_tasks
