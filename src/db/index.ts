@@ -5,6 +5,7 @@ export {
   createSession,
   getSessionMessages,
   getRecentMessages,
+  getRecentHeartbeatSpeaks,
   getKv,
   setKv,
   ensureCurrentSession,

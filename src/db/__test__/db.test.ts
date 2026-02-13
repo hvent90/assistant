@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage, ensureCurrentSession } from ".."
+import { initDb, shutdown, getKv, setKv, createSession, getSessionMessages, appendMessage, ensureCurrentSession, getRecentHeartbeatSpeaks } from ".."
 
 const TEST_DB = "postgres://assistant:assistant@localhost:5434/assistant"
 
@@ -93,6 +93,74 @@ describe("sessions", () => {
     const session = await createSession()
     const messages = await getSessionMessages(session)
     expect(messages).toEqual([])
+  })
+})
+
+describe("getRecentHeartbeatSpeaks", () => {
+  const tag = `test-${Date.now()}`
+
+  test("returns speak tool_call inputs from heartbeat messages", async () => {
+    const sessionId = await createSession()
+    await appendMessage({
+      role: "assistant",
+      content: [
+        { id: "tc1", runId: "r1", kind: "tool_call" as const, name: "speak", input: { thought: `${tag}:speak-test-pushups` } },
+        { id: "tr1", runId: "r1", kind: "tool_result" as const, toolCallId: "tc1", content: "Queued" },
+        { id: "t1", runId: "r1", kind: "text" as const, content: "Sent reminder" },
+      ],
+      source: "heartbeat",
+      agent: "heartbeat",
+      sessionId,
+    })
+
+    const speaks = await getRecentHeartbeatSpeaks(50)
+    const match = speaks.find(s => s.thought === `${tag}:speak-test-pushups`)
+    expect(match).toBeDefined()
+    expect(match!.created_at).toBeInstanceOf(Date)
+  })
+
+  test("does not return non-speak tool calls", async () => {
+    const sessionId = await createSession()
+    await appendMessage({
+      role: "assistant",
+      content: [
+        { id: "tc2", runId: "r2", kind: "tool_call" as const, name: "bash", input: { command: `${tag}:bash-only` } },
+        { id: "tr2", runId: "r2", kind: "tool_result" as const, toolCallId: "tc2", content: "file.txt" },
+      ],
+      source: "heartbeat",
+      agent: "heartbeat",
+      sessionId,
+    })
+
+    const speaks = await getRecentHeartbeatSpeaks(50)
+    const match = speaks.find(s => s.thought?.includes(`${tag}:bash-only`))
+    expect(match).toBeUndefined()
+  })
+
+  test("returns results in chronological order", async () => {
+    const s1 = await createSession()
+    const s2 = await createSession()
+    await appendMessage({
+      role: "assistant",
+      content: [{ id: "tc3", runId: "r3", kind: "tool_call" as const, name: "speak", input: { thought: `${tag}:chrono-first` } }],
+      source: "heartbeat",
+      agent: "heartbeat",
+      sessionId: s1,
+    })
+    await appendMessage({
+      role: "assistant",
+      content: [{ id: "tc4", runId: "r4", kind: "tool_call" as const, name: "speak", input: { thought: `${tag}:chrono-second` } }],
+      source: "heartbeat",
+      agent: "heartbeat",
+      sessionId: s2,
+    })
+
+    const speaks = await getRecentHeartbeatSpeaks(50)
+    const firstIdx = speaks.findIndex(s => s.thought === `${tag}:chrono-first`)
+    const secondIdx = speaks.findIndex(s => s.thought === `${tag}:chrono-second`)
+    expect(firstIdx).toBeGreaterThan(-1)
+    expect(secondIdx).toBeGreaterThan(-1)
+    expect(firstIdx).toBeLessThan(secondIdx)
   })
 })
 

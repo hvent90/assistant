@@ -211,6 +211,26 @@ export async function publishEvent(sessionId: number, event: object): Promise<vo
   await getPool().query("SELECT pg_notify('agent_events', $1)", [truncated])
 }
 
+export async function getRecentHeartbeatSpeaks(limit: number): Promise<Array<{
+  thought: string
+  created_at: Date
+}>> {
+  const result = await getPool().query(
+    `SELECT
+       elem->'input'->>'thought' AS thought,
+       m.created_at
+     FROM messages m,
+       jsonb_array_elements(m.content) AS elem
+     WHERE m.agent = 'heartbeat'
+       AND elem->>'kind' = 'tool_call'
+       AND elem->>'name' = 'speak'
+     ORDER BY m.created_at DESC
+     LIMIT $1`,
+    [limit]
+  )
+  return result.rows.reverse()
+}
+
 export async function getRecentMessages(limit: number): Promise<Array<{
   role: string
   text: string
